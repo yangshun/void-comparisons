@@ -9,12 +9,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from inventory_view import inventory_view  # noqa: E402
+from page_shell import wrap  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-# usage: python3 tools/build.py [ROOT] [TEMPLATE] [OUT]; defaults build ../index.html from the Markdown next to tools/
-ROOT = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE.parent
-TEMPLATE = Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / "template.html"
-OUT = Path(sys.argv[3]) if len(sys.argv) > 3 else ROOT / "index.html"
+# usage: python3 tools/build.py [--artifact] [ROOT] [TEMPLATE] [OUT]; defaults build ../index.html from the Markdown next to tools/
+# --artifact writes the page without its doctype/<head>/<body> shell (claude.ai adds its own) to ../artifact.html
+ARTIFACT = "--artifact" in sys.argv[1:]
+ARGS = [a for a in sys.argv[1:] if a != "--artifact"]
+ROOT = Path(ARGS[0]) if len(ARGS) > 0 else HERE.parent
+TEMPLATE = Path(ARGS[1]) if len(ARGS) > 1 else HERE / "template.html"
+OUT = Path(ARGS[2]) if len(ARGS) > 2 else ROOT / ("artifact.html" if ARTIFACT else "index.html")
 
 AREAS = [
     ("01-routing", "routing", "Routing"),
@@ -363,7 +367,7 @@ page = (page.replace("%%NAV%%", "".join(nav))
             .replace("%%TITLES_JSON%%", json.dumps(titles, ensure_ascii=False))
             .replace("%%GAP_TOTAL%%", str(len(all_gaps)))
             .replace("%%AREA_COUNT%%", str(len(AREAS))))
-OUT.write_text(page)
+OUT.write_text(page if ARTIFACT else wrap(page), encoding="utf-8")
 print(f"wrote {OUT} ({OUT.stat().st_size/1e6:.2f} MB), {len(all_gaps)} gap rows")
 for num, slug, name, counts, total in area_counts:
     print(num, slug, counts, total)
