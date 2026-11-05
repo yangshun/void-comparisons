@@ -9,16 +9,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from inventory_view import inventory_view  # noqa: E402
-from page_shell import wrap  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-# usage: python3 tools/build.py [--artifact] [ROOT] [TEMPLATE] [OUT]; defaults build ../index.html from the Markdown next to tools/
-# --artifact writes the page without its doctype/<head>/<body> shell (claude.ai adds its own) to ../artifact.html
-ARTIFACT = "--artifact" in sys.argv[1:]
-ARGS = [a for a in sys.argv[1:] if a != "--artifact"]
-ROOT = Path(ARGS[0]) if len(ARGS) > 0 else HERE.parent
-TEMPLATE = Path(ARGS[1]) if len(ARGS) > 1 else HERE / "template.html"
-OUT = Path(ARGS[2]) if len(ARGS) > 2 else ROOT / ("artifact.html" if ARTIFACT else "index.html")
+# usage: python3 tools/build.py [ROOT] [TEMPLATE] [OUT]; defaults build ../index.html from the Markdown next to tools/
+ROOT = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE.parent
+TEMPLATE = Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / "template.html"
+OUT = Path(sys.argv[3]) if len(sys.argv) > 3 else ROOT / "index.html"
 
 AREAS = [
     ("01-routing", "routing", "Routing"),
@@ -47,7 +43,7 @@ SOURCES = [
     ("astro", "Astro 7.4"),
 ]
 FILE_TO_VIEW = {f"{f}.md": slug for f, slug, _ in AREAS}
-FILE_TO_VIEW.update({"bugs.md": "bugs", "quick-wins.md": "quick-wins", "README.md": "overview"})
+FILE_TO_VIEW.update({"bugs.md": "bugs", "quick-wins.md": "quick-wins", "overview.md": "overview"})
 
 
 def pandoc(md: str, prefix: str) -> str:
@@ -285,14 +281,9 @@ for slug, name in SOURCES:
     views[f"src-{slug}"] = inventory_view(slug, body)
 
 # ---------- overview ----------
-readme = (ROOT / "README.md").read_text()
-readme = re.sub(r"^# .*?\n", "", readme, count=1)                       # title rendered by the page header
-readme = readme.replace("*Prepared 2026-11-04. Covers", "*Covers", 1)
-readme = readme.replace("This folder compares", "This page compares")
-readme = re.sub(r"## Contents\n.*?(?=## Versions compared)", "<!--AREA-GRID-->\n\n", readme, flags=re.S)
-readme = readme.replace("The inventories in `inventories/` are", "The inventories under **Sources** are")
-readme = readme.replace("in `inventories/`", "under Sources")
-overview = post(pandoc(readme, "overview"))
+overview_md = (ROOT / "overview.md").read_text()
+overview_md = re.sub(r"^# .*?\n", "", overview_md, count=1)             # title rendered by the page header
+overview = post(pandoc(overview_md, "overview"))
 
 grid = [f'<section class="area-grid-wrap" aria-labelledby="areas-h"><h2 id="areas-h">The {len(AREAS)} areas</h2>'
         '<p class="grid-note">Each area page opens with a summary, Void\'s gaps (with how many of the other seven frameworks have each one) '
@@ -367,7 +358,7 @@ page = (page.replace("%%NAV%%", "".join(nav))
             .replace("%%TITLES_JSON%%", json.dumps(titles, ensure_ascii=False))
             .replace("%%GAP_TOTAL%%", str(len(all_gaps)))
             .replace("%%AREA_COUNT%%", str(len(AREAS))))
-OUT.write_text(page if ARTIFACT else wrap(page), encoding="utf-8")
+OUT.write_text(page, encoding="utf-8")
 print(f"wrote {OUT} ({OUT.stat().st_size/1e6:.2f} MB), {len(all_gaps)} gap rows")
 for num, slug, name, counts, total in area_counts:
     print(num, slug, counts, total)
