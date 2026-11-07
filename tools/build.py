@@ -304,7 +304,7 @@ grid.append("</ol></section>")
 overview = overview.replace("<!--AREA-GRID-->", "".join(grid))
 HERO = ('<header class="hero">'
         '<h1>Void vs. the major metaframeworks</h1>'
-        '<p class="lede">Void 1.5.0 compared with Next.js, React Router, TanStack Start, Nuxt, SvelteKit, SolidStart '
+        '<p class="lede">Void 1.6.2 compared with Next.js, React Router, TanStack Start, Nuxt, SvelteKit, SolidStart '
         f'and Astro across {len(AREAS)} areas, down to props and options, to find Void\'s feature gaps and guide its roadmap.</p>'
         '<div class="hero-actions"><a class="btn btn-primary" href="#gaps">Open the gap explorer</a>'
         '<a class="btn" href="#routing">Start with routing</a></div>'

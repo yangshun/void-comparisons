@@ -1,6 +1,6 @@
 # 7. Loading & error states
 
-**Versions:** Void 1.5.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default)
 
@@ -12,8 +12,8 @@
   - `useNavigation()` returns `{ state: 'idle'|'loading'|'submitting', location, method }` in all four adapters.
   - React navigations run inside transitions.
   - Deferred props carry their own pending and error state: React uses `Suspense`/`use()`; Vue, Svelte and Solid get `{ loading, value, error }`.
-  - Forms expose `pending`.
-  - Missing: a route-level pending component (Next.js, TanStack Start), pending delay/min-duration (TanStack Start, Nuxt), link-level pending state (Next.js, React Router, TanStack Start) and a built-in progress bar (Nuxt).
+  - Forms expose `pending`. `Link` sets `data-void-pending` while its destination loads.
+  - Missing: a route-level pending component (Next.js, TanStack Start), pending delay/min-duration (TanStack Start, Nuxt) and a built-in progress bar (Nuxt).
 - **Error UI is the largest gap in the area.** Void has no per-route error boundary and no error page component.
   - A loader, action, `head()` or pre-shell SSR error produces a **whole-document 500**. The page is static `public/500.html` (src, undocumented) or a built-in page. It receives no data and renders no layouts.
   - A client navigation that hits an error **falls back to a full page load** of the failing URL.
@@ -45,7 +45,6 @@
 | Client error reporting hook | React Router (`HydratedRouter onError`), TanStack Start (`defaultOnCatch`), Nuxt (`vue:error`/`app:error`), SvelteKit (client `handleError`) | Common (4) | Shared navigation engine (fetch/commit failures) plus per-adapter render error capture. |
 | Per-segment 404 UI | Next.js (`not-found.js`), React Router (nested `ErrorBoundary`), TanStack Start (fuzzy `notFoundComponent`), SvelteKit (nested `+error`), SolidStart (nested catch-alls) | Common (5) | Follows from the error-boundary convention. |
 | Retry/reset of an error boundary | Next.js (`retry`/`reset`), TanStack Start (`reset` + `invalidate`), Nuxt (`clearError`), SolidStart (`ErrorBoundary` reset) | Common (4) | `retry` = re-run the loader through `router.refresh()`, which already exists. |
-| Link-level pending state | Next.js (`useLinkStatus`), React Router (`NavLink` `isPending`), TanStack Start (`MatchRoute pending`) | Common (3) | Add `data-void-pending` / a render prop on `Link` from navigation-engine state; same across 4 adapters. |
 | Route-level pending component | Next.js (`loading.js`), TanStack Start (`pendingComponent`) | Differentiator (2) | React can use transitions and Suspense. Vue, Svelte and Solid need an engine-driven swap. Interacts with the prefetch cache (instant if prefetched). |
 | Pending delay / min duration | TanStack Start (`pendingMs` 1000/`pendingMinMs` 500), Nuxt (indicator `throttle` 200) | Differentiator (2) | Engine-level timers exposed on `useNavigation()` (e.g. `showPending`). |
 | Error-transform hook (reshape or change status of client-visible errors) | SvelteKit (`handleError` return/status), SolidStart (`serverFunctions.onError`) | Differentiator (2) | Could be the same hook as server reporting. |
@@ -56,7 +55,7 @@
 ## Where Void is ahead
 
 - **Uniform deferred-data states across adapters.** `Deferred<T>` is `{ loading, value, error }` in Vue, Svelte and Solid, and `Promise` + Suspense in React. Production masks unexpected messages while `HTTPException` messages pass, and grouped resolvers share one call. Peers rely on raw library primitives.
-- **Status-based routing of action errors.** Call-site errors go to `form.errors`/`form.error` and `action()` returns `{ ok: false }`; the rest are thrown. `VoidActionError` carries `status`, `body`, `url` and `limit`, and `Form` renders an alert and blocks resubmission until a 429 retry deadline. No peer classifies by status out of the box.
+- **Status-based routing of action errors.** Call-site errors go to `form.errors`/`form.error` and `action()` returns `{ ok: false }`; the rest are thrown. `VoidActionError` carries `status`, `body`, `url` and `limit`, and `Form` renders an alert and blocks resubmission until a 429 retry deadline. `isVoidActionError()` (all 4 adapters) matches one at any status; `isCallSiteActionError()` matches only the statuses `action()` returns. No peer classifies by status out of the box.
 - **No late-status pitfalls.** Redirects, 404s and 5xx are decided before any byte streams, because the loader completes first and deferred data can't alter status. Next.js (200 + `noindex`), SolidStart, Nuxt and SvelteKit all document constraints here.
 - **`useNavigation()` with `submitting` state and `location`/`method`** is identical in React, Vue, Svelte and Solid. Nuxt, SvelteKit and SolidStart each expose a different, smaller shape.
 - **Error responses negotiate HTML vs text** using `Sec-Fetch-Dest`, `Accept`, method, `/api` prefix and file extension (built-in pages). Fetch/XHR callers don't get HTML error documents. Nuxt 5 and SvelteKit do something similar by `Accept`/location.
@@ -84,7 +83,7 @@
 
 | Framework | Global navigation state | Per-link pending | Mutation pending | Built-in progress UI |
 |---|---|---|---|---|
-| **Void** | `useNavigation()` → `{ state, location, method }` (React, Vue, Svelte, Solid) | **none.** `Link` exposes only the *active* state (`aria-current="page"`, `data-void-active`, `activeMatch`); the `onNavigate` callback runs per link. | `form.pending`; React `useFormStatus`; `useNavigation().state === 'submitting'` | none |
+| **Void** | `useNavigation()` → `{ state, location, method }` (React, Vue, Svelte, Solid) | **`data-void-pending`** on every link to the in-flight destination (path, query, hash and method), including during `router.refresh()` (`pages/link.ts`). Not a render prop. | `form.pending`; React `useFormStatus`; `useNavigation().state === 'submitting'` | none |
 | **Next.js** | none (wrap `router.push` in `useTransition`) | **`useLinkStatus()` → `{ pending }`**: skipped if already prefetched; only the last-clicked link | `useActionState`, `useFormStatus` | none |
 | **React Router** | `useNavigation()` (state, location, formData…), `useFetchers()` | **`NavLink` `isPending` / `.pending` class** | `fetcher.state` | none |
 | **TanStack Start** | `useRouterState()`; `router.subscribe` events (`onBeforeNavigate` → … → `onRendered`) | **`<MatchRoute pending>`** | server-fn calls are BYO | none |
@@ -93,7 +92,7 @@
 | **SolidStart** | `useIsRouting()` | none | `useSubmission(s)` | none |
 | **Astro** | ClientRouter events (`astro:before-preparation` / `after-preparation`, overridable `loader()`) | none | — | none |
 
-**Void gap:** partial. Missing: link-level pending state (Common: Next.js, React Router, TanStack Start) and a built-in progress indicator (Differentiator: Nuxt). The global hook is at parity. It is the same API across Void's four adapters, so Vue, Svelte and Solid users get the React Router-shaped API their single-library peers lack.
+**Void gap:** partial. Missing: a built-in progress indicator (Differentiator: Nuxt). Link pending state is `data-void-pending` in all four adapters. The global hook is at parity, so Vue, Svelte and Solid users get the React Router-shaped API their single-library peers lack.
 
 ## Section-level loading and error states (deferred/streamed data)
 
@@ -176,7 +175,7 @@
 
 | Framework | Redirect | Not found | Generic / typed HTTP error | Auth-specific | Throw or return | Callable from |
 |---|---|---|---|---|---|---|
-| **Void** | `c.redirect(url \| routeUrl(...), status?)` (Hono, default 302). Internal targets merge the request query and strip or keep the action key by status/method. Cross-origin → full page load. | `c.notFound()` | `throw new HTTPException(status, { message })` (`hono/http-exception`); `throw new ValidationError({ field: msg })` (actions, per-route middleware); `withValidator` 400 | `requireAuth(c)` throws `HTTPException(401)` | Redirect/notFound: **return only**. `HTTPException`: throwable anywhere, including deep code and deferred resolvers. A throwable redirect is possible only through Hono's `HTTPException({ res })` (Hono API; undocumented in Void, unverified). | Loader ✓, action ✓, middleware ✓, route ✓, deferred resolver (HTTPException) ✓. **Components ✗.** |
+| **Void** | `c.redirect(url \| routeUrl(...), status?)` (Hono, default 302). The location is sent unchanged; the request query is not appended. A named action still drops its action key on a GET follow-up and keeps the page's other parameters (`runtime/routing.ts`). Cross-origin → full page load. | `c.notFound()` | `throw new HTTPException(status, { message })` (`hono/http-exception`); `throw new ValidationError({ field: msg })` (actions, per-route middleware); `withValidator` 400 | `requireAuth(c)` throws `HTTPException(401)` | Redirect/notFound: **return only**. `HTTPException`: throwable anywhere, including deep code and deferred resolvers. A throwable redirect is possible only through Hono's `HTTPException({ res })` (Hono API; undocumented in Void, unverified). | Loader ✓, action ✓, middleware ✓, route ✓, deferred resolver (HTTPException) ✓. **Components ✗.** |
 | **Next.js** | `redirect(path, 'replace'\|'push')`: 307, or 303 for no-JS actions. `permanentRedirect` 308. External URLs allowed. | `notFound()` | none | `forbidden()` / `unauthorized()` + `forbidden.js` / `unauthorized.js` (**exp.**, `authInterrupts`) | **Throw** (must be in the render path) | Server Components, **Client Components during render**, Server Functions, Route Handlers; not event handlers. Proxy uses `NextResponse`. |
 | **React Router** | `redirect()`, `replace()`, `redirectDocument()` | `throw data(null, { status: 404 })` | `data(value, { status, headers })`; `isRouteErrorResponse` | — | Throw or return | Loaders, actions, middleware (+ client variants); not components |
 | **TanStack Start** | `redirect({ to \| href, statusCode, headers, throw })`; typed `Route.redirect()`; `isRedirect` | `notFound({ data, routeId, headers, throw })`; `isNotFound` | none (throw anything; `setResponseStatus` or error metadata sets the status) | — | Throw or return | `beforeLoad`, `loader`, server fns, middleware, components (notFound discouraged); `onError` may convert errors |
@@ -211,7 +210,7 @@
 
 | Framework | Expected-error mechanism | Unexpected errors | Production masking | What reaches the client |
 |---|---|---|---|---|
-| **Void** | `HTTPException(status, message)`, `ValidationError`, validator 400. **Action errors are routed by status** (src: pages/action-result.ts): call-site (400, 402, 404, 408, 409, 412, 413, 415, 422, 429, 499) go to `form.errors`/`form.error` and `action()` → `{ ok: false }`; boundary (401, 403, 405, 428, 5xx, others) are thrown. | `console.error` + 500 page (Pages apps) or Hono's text 500 | 500 page never shows details. Deferred: non-HTTPException messages → `"Internal Server Error"`. | Actions: `VoidActionError { status, statusText, body, url, limit }`; message = HTTPException message (4xx) or plain-text 4xx body. Loaders and routes: an HTTPException message becomes the plain-text body. |
+| **Void** | `HTTPException(status, message)`, `ValidationError`, validator 400. **Action errors are routed by status** (src: pages/action-result.ts): call-site (400, 402, 404, 408, 409, 412, 413, 415, 422, 429, 499) go to `form.errors`/`form.error` and `action()` → `{ ok: false }`; boundary (401, 403, 405, 428, 5xx, others) are thrown. | `console.error` + 500 page (Pages apps) or Hono's text 500 | 500 page never shows details. Deferred: non-HTTPException messages → `"Internal Server Error"`. | Actions: `VoidActionError { status, statusText, body, url, limit }`; message = HTTPException message (4xx) or plain-text 4xx body. `isVoidActionError()` narrows any status; `isCallSiteActionError()` only the statuses returned to the caller. Loaders and routes: an HTTPException message becomes the plain-text body. |
 | **Next.js** | Return values (`useActionState`), conditional render or redirect | Thrown to boundaries | Generic message + `digest` | — |
 | **React Router** | Thrown `Response`/`data()`: not sanitized, not sent to `handleError` | Thrown `Error` → sanitized, `handleError` | Generic message, no stack | `isRouteErrorResponse` vs `Error` |
 | **TanStack Start** | `redirect`/`notFound` control flow; errors with status ≥400 metadata are "expected" (not logged) | Logged; generic 500 JSON | Message hidden | Server-fn errors propagate with their message |

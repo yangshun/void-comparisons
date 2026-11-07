@@ -6,10 +6,10 @@ Small changes that close a gap or fix a rough edge, taken from the area comparis
 - **`InferProps<T>` = `Serialize<…>`** so page prop types match what actually arrives.
 - **Honor `c.status()`** on rendered pages and page JSON.
 - **Await `head()`**, which makes it async.
-- **Expose the route id and pattern** in `useRouter()`. **Type `useParams()`** from the route map that codegen already generates.
+- **Expose the route id and pattern** in `useRouter()`. `useParams<'/users/:id'>()` is typed; inferring that pattern from the component file, and typing `c.req.param()` without a `PageParams` cast, are still open.
 - **Turn silent client stubs into build errors.**
 - **Adapter parity:**
-  - per-submit visit options (`preserveScroll`, `replace`, …) for React `useForm`, which today always scrolls to the top;
+  - per-submit `replace` and the other visit options for React `useForm`. `preserveScroll` is a hook option, and an in-place action keeps scroll by default;
   - multipart uploads from `useIslandForm`, which today always sends JSON;
   - consistent `preserveState` across adapters.
 - **Validate island strategy strings** (a typo currently means the island never hydrates, with no warning) and page-flag exports (non-literal `ssr`/`prerender`/`revalidate` values are silently ignored).

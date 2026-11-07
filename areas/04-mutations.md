@@ -1,6 +1,6 @@
 # 4. Mutations
 
-**Versions:** Void 1.5.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary
 
@@ -32,7 +32,7 @@
 | GET / search forms with client-side navigation | Next.js (`<Form action="/search">`, with prefetch), React Router (`<Form method="get">`), SvelteKit (GET forms routed like links), Astro (ClientRouter) | Common (4) | `FormMethod` excludes `get` and nothing intercepts native submits. Could map to `router.visit(url, { data })`, since `Link` already serializes GET `data` to a query string. |
 | Trusted-origins allow-list for page actions; opt-in protection for `routes/` | Next.js (`allowedOrigins`), React Router (`allowedActionOrigins`), SvelteKit (`csrf.trustedOrigins`), TanStack Start (`origin`; middleware attachable to routes) | Common (4) | Keep the current behaviour of allowing requests with no origin headers, or make it configurable (TanStack Start rejects them by default). |
 | Configurable request body-size limit | Next.js (`serverActions.bodySizeLimit` 1 MB), SvelteKit (`BODY_SIZE_LIMIT`), Astro (`security.actionBodySizeLimit` 1 MB) | Common (3) | Hono's `bodyLimit` middleware may work (not documented by Void). Note that Cloudflare has platform caps. |
-| Scroll, replace and state options for React `useForm` submissions | React Router (`preventScrollReset`, `replace`, `state`), Next.js (`scroll`, `replace`), SvelteKit (`data-sveltekit-reset`, `replacestate`) | Common (3) | Adapter parity: Vue, Svelte and Solid already accept `preserveScroll`, `replace`, `viewTransition` per submit. React scrolls to top after every successful or invalid submission. |
+| `replace` and history `state` for React `useForm` submissions | React Router (`replace`, `state`), Next.js (`replace`), SvelteKit (`data-sveltekit-replacestate`) | Common (3) | Scroll is closed: an in-place action keeps scroll unless `preserveScroll: false` (`pages/navigation-engine.ts` `makeCommit`). React `useForm` takes `preserveScroll` as a hook option; `action()` takes it per call. Vue, Svelte and Solid still take `replace` and `viewTransition` per submit. React does not. |
 | Submitted data in global navigation or submission state (optimistic and pending UI elsewhere) | React Router (`navigation.formData`, `fetcher.formData`), SolidStart (`submission.input`); Next.js (`useFormStatus().data`, React) | Common (3) | `useNavigation()` exposes `{ state, location, method }` only. |
 | Framework optimistic helper (non-React) | SvelteKit `withOverride` [exp] | Differentiator (1, [exp]) | React already composes `useOptimistic` with `useForm`. Vue, Svelte and Solid would need a helper keyed to `useForm`. |
 | Deferred props refreshed after a mutation | React Router (loaders re-run), SvelteKit (loads re-run), TanStack Start (`invalidate`) | Common (3) | Void strips deferred from mutation responses and keeps stale values (docs/guide/pages-routing/loaders.md). |
@@ -48,7 +48,7 @@
 - **Status-category error routing.** Expected 4xx stay with the form, and auth or 5xx errors go to boundaries. This is built in; peers leave it to convention.
 - **An accessible, quota-aware `Form`.** It renders a `role="alert"` error block, a `renderError` override, and `aria-busy`, and it gates resubmission on `UsageLimit` 429 `retryAt` without auto-retrying.
 - **The page-action origin check is on by default**, with `Sec-Fetch-Site` and `Referer` fallbacks. Nuxt and SolidStart have no built-in check.
-- **Well-specified redirect semantics.** Query merging and named-action key handling depend on whether the redirect preserves the method.
+- **Well-specified redirect semantics.** `c.redirect()` sends the location unchanged. A named action still drops its action key when the follow-up is a GET and keeps the page's other parameters. Config `routing.redirects` still merge the request query.
 - **`Link method="post" data={…}`** for one-click mutations, plus the `action()` helper with `{ ok, pageData } | { ok: false, error }`.
 - **One mutation API across React, Vue, Svelte and Solid.** React additionally integrates with `useActionState`, `useFormStatus` and `useOptimistic`.
 
@@ -56,7 +56,7 @@
 
 | Framework | Primitive | Addressed by | HTTP methods | Several per page | Callable from code (RPC) |
 |---|---|---|---|---|---|
-| **Void** | Page `action` or `actions = { name: handler, default? }` (`defineHandler` / `.withValidator()`, per-route middleware allowed) | Page URL; a named action is selected by the **first query key** (`/users/42?update`); an unknown name gives 404 `Unknown action: x` | POST, PUT, PATCH, DELETE | ✓ named actions, each with its own validator and types | `action(url, { data, params, method })`, which is a router visit, not RPC; typed `fetch` from `void/client` to `routes/` handlers |
+| **Void** | Page `action` or `actions = { name: handler, default? }` (`defineHandler` / `.withValidator()`, per-route middleware allowed) | Page URL; a named action is selected by the **first query key** (`/users/42?update`); an unknown name gives 404 `Unknown action: x` | POST, PUT, PATCH, DELETE | ✓ named actions, each with its own validator and types | `action(url, { data, params, method, preserveScroll })`, which is a router visit, not RPC; typed `fetch` from `void/client` to `routes/` handlers |
 | **Next.js** | Server Functions (`'use server'`) | Encrypted, per-build action ID, POSTed to the current page | POST only | ✓ (`formAction` per button; actions as props) | ✓ event handlers or `startTransition`; **the client dispatches them one at a time** |
 | **React Router** | Route `action` / `clientAction` (the client one takes priority; `serverAction()`) | Route URL (`?index` added for index routes) | non-GET | one per route (branch on an `intent` field, or target other routes) | `useSubmit()`, `fetcher.submit()`; RSC `"use server"` [exp] |
 | **TanStack Start** | `createServerFn({ method })` + `.validator()` + `.middleware()` + `.handler()` | SHA-256 function ID; `.url` | `GET` (default) or `POST` | any number | ✓ direct call; `useServerFn` (redirects and notFound work) |
@@ -127,7 +127,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 | `encType` | automatic: JSON, or multipart when files are present | unsupported | urlencoded / multipart / `text/plain` | native; `use:enhance` requires multipart when there is a file input | native | native |
 | Non-navigating mode | ✗ (always a router visit) | function actions don't navigate | `navigate={false}` + `fetcherKey` | `update({ navigate: false })`; remote forms don't navigate | default (actions don't navigate) | — |
 | Replace history | automatic (same URL replaces; a redirect pushes). `replace` is a per-submit option in Vue/Svelte/Solid, **not React** | `replace` (string action) | `replace` | `data-sveltekit-replacestate` (GET forms) | — | — |
-| Scroll | **Scrolls to top after commit** unless `preserveScroll` is passed (Vue/Svelte/Solid submit options; React `useForm` has no option; pages/navigation-engine.ts `makeCommit`) | `scroll` (default true) | `preventScrollReset` | `data-sveltekit-reset="false"` | — | — |
+| Scroll | **Keeps scroll** when the action stays on the same URL. A redirect, or `preserveScroll: false`, scrolls to the top (or the hash). React sets `preserveScroll` on `useForm()`; Vue, Svelte and Solid pass it per submit; `action()` takes it per call (`pages/navigation-engine.ts` `makeCommit`) | `scroll` (default true) | `preventScrollReset` | `data-sveltekit-reset="false"` | — | — |
 | Reset fields on success | `resetOnSuccess` (data + defaults back to mount values); `reset()` | React 19 resets uncontrolled fields after an action (React behavior, not a Next.js option) | — | `update({ reset })` (default true); remote `enhance`: no auto reset | — | inputs cleared on submit (use `transition:persist`) |
 | Revalidation control | ✗ (the loader always re-runs) | via the action's own calls | `defaultShouldRevalidate` | `update({ refreshAll })`; `.updates()` | `revalidate` keys in the response helper | — |
 | Full-document submit | ✗ | `formMethod` etc. fall back to native | `reloadDocument` | `data-sveltekit-reload` | native | `data-astro-reload` |
@@ -139,9 +139,9 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Behavioral differences that matter:**
 - React `useForm` submits `form.data` (client state) and **ignores the `FormData`** React passes to the action (react/src/runtime/use-form.ts). Uncontrolled inputs that have a `name` but are not bound to `form.data` are silently dropped.
-- Vue, Svelte and Solid submit methods take visit options (`preserveScroll`, `preserveState`, `replace`, `viewTransition`, a `data` override). React's submit methods are native form-action callbacks, so React has **no per-submit options**. That is an adapter-parity gap.
+- Vue, Svelte and Solid submit methods take visit options (`preserveScroll`, `preserveState`, `replace`, `viewTransition`, a `data` override). React's submit methods are native form-action callbacks. React `useForm` accepts `preserveScroll` on the hook, not per submit, and still has no `replace` or `viewTransition`. That is an adapter-parity gap.
 
-**Void gap: partial.** Missing: GET/search forms with client-side navigation (Next.js, React Router, SvelteKit, Astro); non-navigating mode; a `replace`/scroll/`state` option for React; full-document opt-out; revalidation control.
+**Void gap: partial.** Missing: GET/search forms with client-side navigation (Next.js, React Router, SvelteKit, Astro); non-navigating mode; a `replace`/`state` option for React; full-document opt-out; revalidation control.
 
 ## Non-navigating and concurrent submissions
 
@@ -212,7 +212,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 | Framework | Default after success | Round trips | Targeting | Opt-out | After a failed submission |
 |---|---|---|---|---|---|
-| **Void** | **The current page's loader re-runs on the server and the new props return in the same response** (single-flight for the current page). The prefetch cache is flushed entirely. `shared` middleware data is recomputed. Deferred props are **stripped and keep their last values** until the next navigation | 1 (a redirect is followed in the same `fetch`, and the destination JSON is used as the GET result) | ✗ | ✗ (only by redirecting or returning a `Response`) | The loader **also re-runs** on `ValidationError` (the page is returned with `errors`) |
+| **Void** | **The current page's loader re-runs on the server and the new props return in the same response** (single-flight for the current page). The prefetch cache is flushed entirely. Global middleware does not run again, so `shared` is whatever the action request already set. Deferred props are **stripped and keep their last values** until the next navigation | 1 (a redirect is followed in the same `fetch`, and the destination JSON is used as the GET result) | ✗ | ✗ (only by redirecting or returning a `Response`) | The loader **also re-runs** on `ValidationError` (the page is returned with `errors`) |
 | **Next.js** | Re-renders the current route in the same response **only if** the action called `updateTag`, `revalidatePath` or `refresh()`, mutated cookies, or redirected; otherwise only the return value comes back. Any revalidation clears the whole client cache | 1 | tags / paths | default is "nothing" | — |
 | **React Router** | **All active loaders** (2xx), including after fetcher and resource-route submissions | 2 for client submissions (POST, then `.data` GET); 1 for a document POST | — | `shouldRevalidate`, `defaultShouldRevalidate` | non-2xx: **no** revalidation |
 | **TanStack Start** | none (`router.invalidate()` by hand; does not purge CDN or DB caches) | 2 | `filter` | — | — |
@@ -232,7 +232,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 | Framework | API | Default status | Client handling | Notes |
 |---|---|---|---|---|
-| **Void** | `return c.redirect(url \| routeUrl(...), status?)` | 302, Hono's default (per Hono, not Void docs) | `fetch` follows the redirect; the destination page JSON is used as the GET result; a cross-origin target gets a full page load | Internal targets merge the request query (the destination wins). The named-action key is dropped when the redirect becomes a GET (303, or 301/302 after POST) and kept for 307/308 (docs/reference/api/rewrites.md). No external-URL guard |
+| **Void** | `return c.redirect(url \| routeUrl(...), status?)` | 302, Hono's default (per Hono, not Void docs) | `fetch` follows the redirect; the destination page JSON is used as the GET result; a cross-origin target gets a full page load | `c.redirect()` sends the location unchanged and does not append the request query (`runtime/routing.ts`). A named action still drops its action key when the follow-up is a GET and keeps the page's other parameters. Config `routing.redirects` still merge the request query (the destination wins). No external-URL guard |
 | **Next.js** | `redirect(path, type?)` (throws; call it outside `try`) | 303 without JS | In actions it defaults to `push`; the destination RSC is streamed in the same response | Revalidate before redirecting |
 | **React Router** | `redirect` / `replace` / `redirectDocument` (return or throw) | 302 | `replace` → `replaceState`; `redirectDocument` → full reload | Docs warn about open redirects |
 | **TanStack Start** | `throw redirect({ to \| href, params, search, statusCode, replace, resetScroll, … })` | — | handled by route lifecycles or `useServerFn`; a returned `Response` with `Location` is followed by the browser before the caller sees it | |

@@ -12,7 +12,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 
 | Framework | Version documented | Notes |
 |---|---|---|
-| Void | 1.5.0 | Docs plus `packages/` source |
+| Void | 1.6.2 | Docs plus `packages/` source |
 | Next.js | 16.4 stable | App Router only; a few 16.5-canary items are flagged |
 | React Router | 8.x | Framework mode only |
 | TanStack Start | 1.169+ (first stable) | React flavor; gaps in the Solid flavor are noted |
@@ -23,7 +23,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 
 | Framework | Repo and paths read | Commit (date) |
 |---|---|---|
-| Void | [voidzero-dev/void](https://github.com/voidzero-dev/void): `docs/`, `packages/` | [`65eb7f07f020fda6586dba4c2d2d03aaab000cc3`](https://github.com/voidzero-dev/void/commit/65eb7f07f020fda6586dba4c2d2d03aaab000cc3) (2026-11-04) |
+| Void | [voidzero-dev/void](https://github.com/voidzero-dev/void): `docs/`, `packages/` | [`76d1a8a6db0ddb4a16d903ebe9673a923bf5b539`](https://github.com/voidzero-dev/void/commit/76d1a8a6db0ddb4a16d903ebe9673a923bf5b539) (2026-11-06) |
 | Next.js | [vercel/next.js](https://github.com/vercel/next.js): `docs/01-app/` | [`a47959503adac8080a8b9a35f79617740d97925f`](https://github.com/vercel/next.js/commit/a47959503adac8080a8b9a35f79617740d97925f) (2026-11-03) |
 | React Router | [remix-run/react-router](https://github.com/remix-run/react-router): `docs/` | [`db80dda076ec9cdcefff480079252fe0c977710e`](https://github.com/remix-run/react-router/commit/db80dda076ec9cdcefff480079252fe0c977710e) (2026-11-02) |
 | TanStack Start | [TanStack/router](https://github.com/TanStack/router): `docs/start/`, `docs/router/` | [`da8c28c498230a5730ce75b2693baeeb3ef68ac1`](https://github.com/TanStack/router/commit/da8c28c498230a5730ce75b2693baeeb3ef68ac1) (2026-11-03) |
@@ -35,7 +35,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 **To update this analysis later**, diff each repo from its recorded commit, limited to the paths above, and re-check only the areas those changes touch. For Void:
 
 ```bash
-git -C void log --oneline 65eb7f07f020fda6586dba4c2d2d03aaab000cc3..HEAD -- docs packages
+git -C void log --oneline 76d1a8a6db0ddb4a16d903ebe9673a923bf5b539..HEAD -- docs packages
 ```
 
 Then update the affected area pages and this table. The same command works for each framework repo with its own commit and paths.
@@ -183,11 +183,14 @@ The roadmap should protect these:
   - 4 triggers that can be combined;
   - a per-link cache TTL with a stale-while-revalidate pair (`cacheFor: [fresh, expire]`);
   - an awaitable `router.prefetch()`;
-  - code and data loaded in parallel, with deferred data resolved inline.
+  - code and data loaded in parallel, with deferred data resolved inline;
+  - `Link` prefetch skips Save-Data and 2G connections (Chromium `navigator.connection` only; `router.prefetch()` is not gated);
+  - a `visible` link prefetches only after it stays in view for 300 ms.
 - **A robust navigation engine:**
   - abort-safe visits, where a stale visit never commits;
-  - built-in active-link marking;
-  - scroll restoration that survives a reload;
+  - built-in active-link marking, including query params on the link;
+  - `data-void-pending` on every link to the page that is loading;
+  - scroll restoration that survives a reload, and in-place actions that keep the scroll position;
   - view transitions in all 4 adapters;
   - non-GET `Link`s.
 - **Correct streaming semantics.** Status, headers and head are settled before the first byte, so there is no "200 on a streamed 404", no dropped headers and no head patch scripts.

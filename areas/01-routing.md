@@ -1,6 +1,6 @@
 # 1. Routing
 
-**Versions:** Void 1.5.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · [N5] new or changed in Nuxt 5 · (unverified) not confirmed in docs or source
 
@@ -9,7 +9,7 @@
 ## At a glance
 
 - **Model.** Void routing is file-based only. Two trees (`routes/` for HTTP handlers, `pages/` for UI) share one filename parser. Pages mode follows the Inertia pattern: every client navigation is a server round-trip for the page's JSON object, unless it is served from the prefetch cache or from `/_void/pages/*.json` in static output. That covers search-param-only changes and back/forward too. As a result, guards, redirects and rewrites live in server middleware and loaders, and there is no client-side route middleware.
-- **Strengths.** One `Link` and router API is shared across React, Vue, Svelte and Solid. Prefetch has 4 triggers, combinable arrays, a per-link TTL with a stale-while-revalidate pair, and code + data loading. Other strengths: built-in active-link marking, view transitions in all four adapters, automatic window scroll restoration that survives reload, typed URL building (`routeUrl`, `RouteDestination`, opt-in `typedRoutes`), named layouts with innermost/whole-chain replacement, `.dev`/`.prod` environment-only routes, an abort-safe navigation engine that never lets a stale visit commit, and non-GET `Link`s.
+- **Strengths.** One `Link` and router API is shared across React, Vue, Svelte and Solid. Prefetch has 4 triggers, combinable arrays, a per-link TTL with a stale-while-revalidate pair, code + data loading, and a skip when the browser reports Save-Data or a 2G connection. Other strengths: built-in active-link marking (a link with a query must match those params) and `data-void-pending` while that destination loads, view transitions in all four adapters, automatic window scroll restoration that survives reload, in-place actions that keep scroll, typed URL building (`routeUrl`, `RouteDestination`, opt-in `typedRoutes`), named layouts with innermost/whole-chain replacement, `.dev`/`.prod` environment-only routes, an abort-safe navigation engine that never lets a stale visit commit, and non-GET `Link`s.
 - **Table-stakes gaps (6–7 of 7 others):**
   - **base path** (7/7);
   - **layout-level data loading** (7/7; layouts get only `useShared()` from middleware; cross-listed with Area 3);
@@ -18,7 +18,7 @@
 - **Common gaps (3–5):**
   - Segments and layouts: optional segments, zero-length catch-all, param matchers, partial-segment params, layout escape/reset.
   - Navigation behavior: blocking that covers back/forward and programmatic navigation, history `state`, modal routes (intercept/mask/shallow), URL/search updates that skip the loader.
-  - Prefetch: code-only prefetch and data-saver awareness.
+  - Prefetch: code-only prefetch.
   - Accessibility and view transitions: a route announcer with focus management, and view-transition types/direction.
   - URL handling: a trailing-slash policy, hash/memory routing, programmatic route injection, route metadata, a search-param setter, and client URL rewriting.
 - **Differentiators Void lacks:** parallel routes, typed and validated search params (TanStack), lazy route discovery (React Router, SvelteKit), element-level scroll restoration (TanStack), and keep-alive of departed pages (Next.js [CC], Nuxt).
@@ -41,7 +41,7 @@
 | History `state` per entry | React Router, TanStack, SvelteKit (`page.state`), Solid, Astro | Common (5) | `history.state` already carries `__voidScrollKey`; merge user state; expose read API per adapter |
 | Code-only prefetch | SvelteKit `preload-code`; TanStack `loadRouteChunk`; Solid `usePreloadRoute`; Next.js `auto`; Nuxt (code + payload only for prerendered) | Common (5) | New strategy flag (e.g. `prefetch={{ data: false }}`); components already loadable separately |
 | Programmatic route definition / injection | React Router config; TanStack code/virtual; Nuxt `pages:extend`/`extendPages`/`addRoute`; Solid config; Astro `injectRoute` | Common (5) | Needed for Void plugins to contribute pages; must feed codegen (typed routes) and the eager manifest |
-| Inferred per-page param types | Next.js `PageProps<>`; React Router `+types`; TanStack inferred; Nuxt `useRoute('name')`; SvelteKit `$types` | Common (5) | Codegen already knows params per pattern (`codegen/route-types.ts`); type `useParams()` / page props per file |
+| Param types inferred from the component file, and typed `c.req.param()` without a cast | React Router `+types`; TanStack inferred; SvelteKit `$types` | Common (3) | `useParams<'/users/:id'>()` and `PageParams<'/posts/:slug'>` shipped (`codegen/route-types.ts`). A wrong pattern or param name is a type error. The pattern is not inferred from the file, and `c.req.param()` still needs `as PageParams<…>`. Next.js and Nuxt also require a route literal. |
 | Zero-length / optional catch-all | Next.js `[[...x]]`; SvelteKit `[...rest]`; Solid `*`; Astro `[...rest]` | Common (4) | Pattern `:p{.+}` → allow empty; decide the param value (`''` vs `undefined`) |
 | Param matchers affecting matching | SvelteKit `[id=matcher]`; TanStack `params.parse`; Nuxt regex path / `validate`; Solid `matchFilters` | Common (4) | Must run identically in the client matcher and Hono; Standard Schema reuse from `withValidator` |
 | Partial-segment params (`post-[id]`, `[a]-[b]`) | SvelteKit, TanStack, Nuxt, Astro | Common (4) | Parser + regex generation |
@@ -56,7 +56,6 @@
 | Static route metadata (handle/staticData/meta) | React Router `handle`; TanStack `staticData`; Nuxt page meta; Solid `info` | Common (4) | AST-extracted static export like `layout`; pairs with the introspection gap |
 | Custom restoration key | React Router `getKey`; TanStack `getScrollRestorationKey`; Nuxt `scrollBehavior` | Common (3) | `scroll-restoration.ts` keys per entry today |
 | Search-param setter (merge/updater) | React Router `setSearchParams`; TanStack `search: prev => next`; Solid `setParams` | Common (3) | Build on `mergeDataIntoHref` |
-| Prefetch data-saver/slow-network gating | Nuxt, SvelteKit, Astro | Common (3) | Core `prefetchLink` check |
 | Client URL rewrite/reroute | SvelteKit `reroute`; TanStack `rewrite`; Solid `transformUrl` | Common (3) | Would fix the documented rewrite vs `Link` mismatch |
 | `beforeunload` integration | React Router, TanStack, SvelteKit | Common (3) | Part of blocking API |
 | Remount-key hook (consistent across adapters) | Next.js `template`; TanStack `remountDeps`; Nuxt `key` | Common (3) | React/Svelte ignore `preserveState`; Vue remounts by default; unify semantics |
@@ -66,7 +65,6 @@
 | Parallel routes / named outlets | Next.js `@slot` (stable); Nuxt named views | Differentiator (2) | One page component per URL today; large protocol change |
 | Lazy route discovery / server route resolution | React Router `routeDiscovery`; SvelteKit `router.resolution: 'server'` | Differentiator (2) | Manifest grows with page count (`pages/manifest.ts` comment) |
 | Keep-alive of departed pages | Next.js [CC] Activity; Nuxt `keepalive` | Differentiator (2) | Adapter-specific (React Activity, Vue KeepAlive) |
-| Pending state per link | Next.js `useLinkStatus`; React Router `NavLink isPending` | Differentiator (2) | Derivable from `useNavigation().location` today |
 | Built-in reduced-motion for transitions | Nuxt, Astro | Differentiator (2) | — |
 | Case-sensitivity option | TanStack `caseSensitive`; Nuxt `sensitive` | Differentiator (2) | Hono + client regex flag |
 | Speculation Rules prefetch/prerender | Nuxt [exp]; Astro [exp] | Differentiator (2, experimental only) | — |
@@ -77,9 +75,9 @@
 ## Where Void is ahead
 
 - **One router API across four UI libraries**: `Link`, `useRouter`, `useNavigation`, prefetch, active links, view transitions and scroll restoration are identical in React, Vue, Svelte and Solid. The nearest competitor is TanStack Router, which covers two UI libraries (React and Solid). Astro's ClientRouter works with any UI library, but it swaps whole HTML documents.
-- **Prefetch control:** four triggers, combinable arrays (first wins), per-link `cacheFor` with a `[fresh, expire]` stale-while-revalidate pair and single-use `0`, an app-wide `defaultStrategy`/`hoverDelay`/`cacheFor`, an awaitable `router.prefetch()` that returns the page object, and `flush`/`flushAll`. No other framework has a per-link TTL.
+- **Prefetch control:** four triggers, combinable arrays (first wins), per-link `cacheFor` with a `[fresh, expire]` stale-while-revalidate pair and single-use `0`, an app-wide `defaultStrategy`/`hoverDelay`/`cacheFor`, an awaitable `router.prefetch()` that returns the page object, and `flush`/`flushAll`. No other framework has a per-link TTL. `Link` prefetch also skips Save-Data and 2G connections, and a `visible` link waits 300 ms in view. `router.prefetch()` is not connection-gated.
 - **Non-GET `Link`** (`method` + `data` renders a button that performs an action visit), and `router.visit` doubles as a typed mutation client with multipart detection.
-- **Built-in active-link marking** with `aria-current` and `data-void-active`, exact or prefix, consistent with server matching. Next.js, SvelteKit and Astro have nothing built in.
+- **Built-in active-link marking** with `aria-current` and `data-void-active`, exact or prefix, consistent with server matching. A link that sets a query is active only when the current URL has each of those params. Next.js, SvelteKit and Astro have nothing built in. **`data-void-pending`** marks every link to the destination that is loading (path, query, hash and method).
 - **Navigation engine robustness:** AbortController-based cancellation, monotonic visit ids so stale visits never commit, transparent same-origin redirect following, a full-load fallback for non-Void responses, deferred props streamed over NDJSON during client navigation in all four adapters, rollback if the history write fails, unsafe schemes rejected (Next.js lets `javascript:` execute), and `capacitor:` support.
 - **Scroll restoration out of the box,** including across reloads (sessionStorage) and new fragment entries, with no component to mount (React Router needs `<ScrollRestoration>`, TanStack needs `scrollRestoration: true`).
 - **Named layouts with chain semantics** (`'name'` replaces the innermost layout, `'!name'` replaces all, `false` removes all). These are selected statically and validated at build time (a missing name fails the build).
@@ -112,7 +110,7 @@
 
 | Framework | Ranking rules | Conflict handling |
 |---|---|---|
-| **Void** (`pages/`, `routes/`, WebSocket routes) | One shared comparator: catch-all routes last, fully static routes first, then the first differing segment decides (static, then `[param]`, then catch-all); parameter names never decide. The client matcher uses an exact map for the static prefix, then regexes in this order (`pages/manifest.ts`) | Same pattern or same page id → build error. Identical-regex dynamic pages (`[id]` vs `[slug]`) → warning "is never used". **Partial overlaps are silent** (see the example in At a glance) |
+| **Void** (`pages/`, `routes/`, WebSocket routes) | One shared comparator (`router/route-order.ts` `compareRouteSpecificity`): catch-all routes last, fully static routes first, then the first differing segment decides (static, then `[param]`, then catch-all); parameter names never decide. The client matcher uses an exact map for the static prefix, then regexes in this order (`pages/manifest.ts`) | Same pattern or same page id → build error. Identical-regex dynamic pages (`[id]` vs `[slug]`) → warning "is never used". **Partial overlaps are silent** |
 | **Next.js** | Static > dynamic > catch-all > optional catch-all (from memory, unverified; not in inventory) | Groups resolving to the same URL → error; `page` + `route` in one segment → error |
 | **React Router** | Optional segments match eagerly (`/x` matches `/:lang` before `/:productId`); full ranking algorithm not in inventory. [exp] `unstable_routePatternMatching` (data mode only) | — |
 | **TanStack Start** | Automatic, independent of definition order: index → static (most specific first) → dynamic (longest → shortest) → splat; optional ranks below exact. `params.priority` orders competing `params.parse` candidates | Experimental: `params.parse` returning `false` skips to the next candidate |
@@ -235,8 +233,8 @@ Normalized by capability. Cells give each framework's mechanism; "—" means not
 | Per-link prefetch TTL | **`cacheFor`**: ms, `'30s'`, or `[fresh, expire]` SWR pair; `0` = single use | — | — | — (route `preloadStaleTime`) | — | — | — | — |
 | Full document navigation | `reloadDocument` (GET only; disables prefetch) | — (use `<a>`) | `reloadDocument` | `reloadDocument` | `external` | `data-sveltekit-reload`, `rel="external"` | — | `data-astro-reload` |
 | View transition | `viewTransition` (bool override) | `transitionTypes` | `viewTransition` (**deprecated**; use React `<ViewTransition>`) | `viewTransition: bool \| { types }` | — (page meta) | — | — | `transition:*` directives |
-| Active styling | `activeMatch: 'exact'` (default) \| `'prefix'` → `aria-current="page"` (exact only) + `data-void-active`; case- and trailing-slash-sensitive; query/hash ignored; `/` never a prefix | none (use `usePathname`) | `NavLink`: `end`, `caseSensitive`, `className`/`style`/`children` fns with `{isActive, isPending, isTransitioning}`, `aria-current` | `activeOptions {exact, includeHash, includeSearch, explicitUndefined}`, `activeProps`/`inactiveProps`, children fn, `data-status` | `activeClass`/`exactActiveClass`, `ariaCurrentValue` | none | `activeClass`/`inactiveClass`/`end`, `aria-current` | none |
-| Pending state on link | — (derive from `useNavigation().location`) | `useLinkStatus()` | `NavLink` `isPending` | — | `prefetchedClass` (prefetched, not pending) | — | — | — |
+| Active styling | `activeMatch: 'exact'` (default) \| `'prefix'` → `aria-current="page"` (exact only) + `data-void-active`; case- and trailing-slash-sensitive; hash ignored; a link with a query is active only when the current URL has each of those params (extra params allowed; GET `data` counts); prefix matching compares the path only; `/` never a prefix (`pages/link.ts` `linkActiveAttributes`) | none (use `usePathname`) | `NavLink`: `end`, `caseSensitive`, `className`/`style`/`children` fns with `{isActive, isPending, isTransitioning}`, `aria-current` | `activeOptions {exact, includeHash, includeSearch, explicitUndefined}`, `activeProps`/`inactiveProps`, children fn, `data-status` | `activeClass`/`exactActiveClass`, `ariaCurrentValue` | none | `activeClass`/`inactiveClass`/`end`, `aria-current` | none |
+| Pending state on link | `data-void-pending` on every link whose method, path, query and hash match the in-flight visit, including during `router.refresh()` (`pages/link.ts` `linkPendingAttributes`). A user-supplied attribute wins. No render prop | `useLinkStatus()` | `NavLink` `isPending` | — | `prefetchedClass` (prefetched, not pending) | — | — | — |
 | Cancel per click | `onNavigate(e)` → `e.preventDefault()` | `onNavigate` | — (use `useBlocker`) | `ignoreBlocker` (bypass) | — | — | — | — |
 | URL mask | — | — | `mask` | `mask` | — | — | — | — |
 | Non-GET link | **`method` + `data`** → action visit (button) | — | — (`<Form>`) | — | — | — | — | — (ClientRouter intercepts forms) |
@@ -245,7 +243,7 @@ Normalized by capability. Cells give each framework's mechanism; "—" means not
 | Custom link builder | Undocumented `void/pages-client` helpers (`resolveLink`, `handleLinkClick`, `linkActiveAttributes`) | — | `useLinkClickHandler` | `createLink`, `linkOptions` | `defineNuxtLink`, `custom` slot | n/a | n/a | n/a |
 | Typed `href` | `routing.typedRoutes` (off by default; on in `void init`) | `typedRoutes` | — (use `href()`) | inferred | `typedPages` [N5 default on] | — (use `resolve()`) | — | — |
 
-Void click handling (`pages/link.ts`, `pages/adapter-helpers.ts`): modified clicks (ctrl/meta/shift/alt, non-left), `target` ≠ `_self`, `download`, `defaultPrevented` and cross-origin links are left to the browser. `onNavigate` runs after the user's `onClick`. User-supplied `aria-current`/`data-void-active` win.
+Void click handling (`pages/link.ts`, `pages/adapter-helpers.ts`): modified clicks (ctrl/meta/shift/alt, non-left), `target` ≠ `_self`, `download`, `defaultPrevented` and cross-origin links are left to the browser. `onNavigate` runs after the user's `onClick`. User-supplied `aria-current`/`data-void-active`/`data-void-pending` win.
 
 **Behavioral differences that matter**
 - Void's `Link` is **required** for SPA navigation, as in Next.js/React Router/TanStack/Nuxt. SvelteKit, Solid and Astro upgrade every `<a>`, which matters for Markdown/CMS content. In Void, Markdown pages are island pages anyway, so their links are always full loads.
@@ -254,7 +252,6 @@ Void click handling (`pages/link.ts`, `pages/adapter-helpers.ts`): modified clic
 
 **Void gap:** partial. Missing:
 - link `state` (5/7);
-- pending-state render props or hook on a link (2/7);
 - a documented custom-link builder (3/7);
 - object destinations / `RouteDestination` on `Link.href` (Next.js, React Router, TanStack, Nuxt: 4/7);
 - relative links under `typedRoutes` (3/7);
@@ -264,7 +261,7 @@ Void click handling (`pages/link.ts`, `pages/adapter-helpers.ts`): modified clic
 
 | Framework | API | Options | Completion / return | Abort and race behavior | Server use |
 |---|---|---|---|---|---|
-| **Void** | `useRouter()` → `visit(dest, opts)`, `refresh(opts)`, `prefetch`, `flush`, `flushAll`; read-only `url`, `path`, `query`, `params`. No `back`/`forward` wrappers | `method` (GET default; `POST/PUT/PATCH/DELETE`), `data` (JSON, or multipart if it contains File/Blob/FileList), `preserveScroll`, `preserveState` (default `false` GET / `true` non-GET), `replace`, `viewTransition`, React-only `resolveOn: 'commit'` (default) \| `'data'` | Promise of the page object. Aborted GET visit resolves `undefined`; aborted non-GET rejects `AbortError` (`pages/client.ts`) | A new visit aborts the pending fetch (AbortController) and disposes its deferred props. Visit ids ensure an older visit never commits over a newer URL, and back/forward wins over a pending visit. Same-origin server redirects are followed in place (history gets the final URL); cross-origin → full load. A non-Void response → full-load fallback. `javascript:`/`data:` rejected; `capacitor:` allowed | Throws during SSR. Redirect from loaders/middleware via `c.redirect()` |
+| **Void** | `useRouter()` → `visit(dest, opts)`, `refresh(opts)`, `prefetch`, `flush`, `flushAll`; read-only `url`, `path`, `query`, `params`. No `back`/`forward` wrappers | `method` (GET default; `POST/PUT/PATCH/DELETE`), `data` (JSON, or multipart if it contains File/Blob/FileList), `preserveScroll` (default: keep scroll when a non-GET visit stays on the same URL; `false` resets; `true` also keeps it after a redirect), `preserveState` (default `false` GET / `true` non-GET), `replace`, `viewTransition`, React-only `resolveOn: 'commit'` (default) \| `'data'` | Promise of the page object. Aborted GET visit resolves `undefined`; aborted non-GET rejects `AbortError` (`pages/client.ts`) | A new visit aborts the pending fetch (AbortController) and disposes its deferred props. Visit ids ensure an older visit never commits over a newer URL, and back/forward wins over a pending visit. Same-origin server redirects are followed in place (history gets the final URL); cross-origin → full load. A non-Void response → full-load fallback. `javascript:`/`data:` rejected; `capacitor:` allowed | Throws during SSR. Redirect from loaders/middleware via `c.redirect()` |
 | **Next.js** | `useRouter()` `push`, `replace`, `refresh`, `prefetch`, `back`, `forward`, `bfcacheId` | `scroll`, `transitionTypes`; `prefetch({ kind: 'auto' \| 'full' [16.5 canary], onInvalidate })` | Not documented as a promise (use `useLinkStatus` / transitions) | Not documented; `javascript:` executes (XSS warning) | `redirect()`/`permanentRedirect()` |
 | **React Router** | `useNavigate()` → `navigate(to \| delta, opts)`; `<Navigate>` | `replace`, `state`, `relative`, `preventScrollReset`, `flushSync`, `defaultShouldRevalidate`, `viewTransition` (deprecated) | `Promise<void>` on completion; stable identity | Interrupted navigations/submissions cancel in-flight requests; stale revalidations discarded | `redirect()` in loaders/actions |
 | **TanStack Start** | `useNavigate({ from })`, `router.navigate()` (outside React too), `<Navigate>`, `useMatchRoute`, `useCanGoBack` | All `Link` options (`to/params/search/hash/state/mask/replace/resetScroll/hashScrollIntoView/viewTransition/ignoreBlocker/reloadDocument/href`) | `router.navigate`: `Promise<void>` | Preload lane returns `undefined` on cancel; navigation re-runs its own `beforeLoad` | No-op on server; `throw redirect()` |
@@ -315,7 +312,7 @@ Design note: the hooks must exist in all four adapters. A framework-agnostic eve
 
 | Framework | Triggers (default) | Delay | What is fetched | Cache / TTL | Manual API | Skips / conditions |
 |---|---|---|---|---|---|---|
-| **Void** | `hover` (pointer rest; **focus** and `touchstart` immediate), `click` (`mousedown`/`touchstart`), `mount`, `visible` (IntersectionObserver, once), arrays. App default `defaultStrategy: false` | `hoverDelay` 75 ms | **Code + data**: dynamic-imports the page and layout chunks and requests the page JSON (`X-VoidPages`, `Purpose: prefetch`); **runs the loader** (docs: keep loaders side-effect free). Deferred props resolved inline (no stream). Island targets → `<link rel="prefetch" as="document">`. Static output reads `/_void/pages/<path>.json` | Per-URL+method entry; `cacheFor` default `'30s'`; `[fresh, expire]` = serve stale and refresh in the background; `0` = single use. **Any non-GET visit flushes the whole cache** | `router.prefetch(dest, { cacheFor })` (awaitable, returns the page object), `flush(dest)`, `flushAll()` | Other origins, the current URL, non-GET (throws). No data-saver / slow-network check; no dev/prod gating found |
+| **Void** | `hover` (pointer rest; **focus** and `touchstart` immediate), `click` (`mousedown`/`touchstart`), `mount`, `visible` (IntersectionObserver; prefetches after 300 ms in view, `LINK_VISIBLE_PREFETCH_DELAY`; leaving resets the wait), arrays. App default `defaultStrategy: false` | `hoverDelay` 75 ms | **Code + data**: dynamic-imports the page and layout chunks and requests the page JSON (`X-VoidPages`, `Purpose: prefetch`); **runs the loader** (docs: keep loaders side-effect free). Deferred props resolved inline (no stream). Island targets → `<link rel="prefetch" as="document">`. Production static output reads `/_void/pages/<path>.json` | Per-URL+method entry; `cacheFor` default `'30s'`; `[fresh, expire]` = serve stale and refresh in the background; `0` = single use. **Any non-GET visit flushes the whole cache** | `router.prefetch(dest, { cacheFor })` (awaitable, returns the page object), `flush(dest)`, `flushAll()` | Other origins, the current URL, non-GET (throws). `Link` prefetch skips `saveData` and `2g`/`slow-2g` (`pages/link.ts` `prefetchLink`; Chromium `navigator.connection` only). `router.prefetch()` is not gated. Dev never reads `/_void/pages/*.json`; production skips that file when `prerender: false` (`pages/plugin.ts`, `matchStaticPageId`) |
 | **Next.js** | Viewport (default `auto`); hover re-prefetches expired data | Scheduler queue (viewport > hover; offscreen discarded) | `auto`: static route full; dynamic down to nearest `loading.js`. `true`: full. Partial Prefetching (`partialPrefetching`, needs CC): shared per-route App Shell + per-link prefetch. Segment `prefetch = 'partial' \| 'force-disabled'`; `prefetch()`/`navigation()` stage deferral; segment dedupe + inlining | Client cache; invalidations refresh prefetches; `onInvalidate` | `router.prefetch(href, { kind, onInvalidate })` | **Production only**; only after hydration |
 | **React Router** | `none` (default), `intent` (hover/focus), `render`, `viewport` | — | Route modules **and** loader data via `<link rel=prefetch/modulepreload>` (bypasses `unstable_fetch` headers) | Browser HTTP cache | `<PrefetchPageLinks page>` | Lazy discovery batches manifest requests for rendered links |
 | **TanStack Start** | `false` (default), `intent` (touch immediate), `viewport`, `render` | `defaultPreloadDelay` 50 ms | Route chunk + every matched `beforeLoad` (`cause: 'preload'`) + `loader` (unless route `preload: false`) | `preloadStaleTime` 30 s, `preloadGcTime` 5 min; navigation re-runs `beforeLoad` and may reuse loader data | `router.preloadRoute()`, `router.loadRouteChunk()` (code only) | — |
@@ -328,12 +325,11 @@ Design note: the hooks must exist in all four adapters. A framework-agnostic eve
 - Void always prefetches **code and data together**, so every prefetch executes the loader. TanStack, SvelteKit, Solid and Next.js can prefetch code only (or a static shell) for links whose data is expensive or user-specific.
 - Void's per-link **SWR TTL** (`['30s', '5m']`) is unique. TanStack's 30 s/5 min split is router- or route-level.
 - Void invalidation is blunt: any mutation flushes everything. Next.js refreshes affected prefetches on tag/path invalidation; TanStack has per-route stale times.
-- Void prefetch has no network-condition awareness (Nuxt, SvelteKit, Astro have it) and no Speculation Rules (Nuxt [exp], Astro [exp]).
+- `Link` prefetch skips Save-Data and 2G, which Nuxt, SvelteKit and Astro also do. Void does not skip offline, and the check only runs where `navigator.connection` exists. There are no Speculation Rules (Nuxt [exp], Astro [exp]).
 - Void prefetch does not run in a speculative lane. A prefetched redirect becomes a `null` entry, which makes the later click do a full load. TanStack explicitly never promotes preload `beforeLoad` results.
 
 **Void gap:** partial. Missing:
 - a code-only prefetch mode (5/7);
-- data-saver / slow-connection gating (3/7);
 - targeted invalidation of prefetched entries on mutation;
 - Speculation Rules (2/7, both [exp]).
 
@@ -364,7 +360,7 @@ Design note: the hooks must exist in all four adapters. A framework-agnostic eve
 
 | Framework | Typed hrefs | Typed params in components | Mechanism |
 |---|---|---|---|
-| **Void** | `routeUrl(pattern, { params, query, hash })`, `RouteDestination`; `routing.typedRoutes` checks strings in `Link`/`visit`/`prefetch`/`flush`/`c.rewrite()` (a dynamic segment accepts any text, including empty) | **No**: `useParams<T>()` is a manual generic (`react/src/runtime/use-params.ts`) | Codegen (`void prepare` / dev server) |
+| **Void** | `routeUrl(pattern, { params, query, hash })`, `RouteDestination`; `routing.typedRoutes` checks strings in `Link`/`visit`/`prefetch`/`flush`/`c.rewrite()` (a dynamic segment accepts any text, including empty) | `useParams<'/users/:id'>()` → `{ id: string }` in all 4 adapters. A wrong pattern or param name is a type error. Without a pattern, `Record<string, string>`. Not inferred from the file. `c.req.param()` needs `as PageParams<'/…'>` | Codegen (`void prepare` / dev server; `PagePathMap` in `codegen/route-types.ts`) |
 | **Next.js** | `typedRoutes` (Link, push/replace/prefetch) | `PageProps<'/x/[y]'>`, `LayoutProps`, `RouteContext` | Codegen (`next typegen`) |
 | **React Router** | `href(path, params)` (Link `to` is untyped) | `Route.*Args` per route via `+types` | Codegen |
 | **TanStack Start** | Link/navigate `to/params/search/hash` | `Route.useParams()` | Inferred (`Register`) |
@@ -373,13 +369,13 @@ Design note: the hooks must exist in all four adapters. A framework-agnostic eve
 | **SolidStart** | No | Manual generic | — |
 | **Astro** | No | Static routes via `InferGetStaticParamsType` | Inference |
 
-**Void gap:** partial. Missing: per-page inferred param types (5/7). Void's string-level `href` checking under `typedRoutes` is on par with Next.js and Nuxt and ahead of React Router, SvelteKit, Solid and Astro.
+**Void gap:** partial. Missing: param types inferred from the component file (React Router, TanStack, SvelteKit: 3/7), and a loader `c.req.param()` that does not need a cast. `useParams<'/users/:id'>()` already types the names when the pattern is passed. Void's string-level `href` checking under `typedRoutes` is on par with Next.js and Nuxt and ahead of React Router, SvelteKit, Solid and Astro.
 
 ## Scroll restoration, focus management and route announcements
 
 | Framework | New navigation | Back/forward | Reload | Hash | Opt-out | Custom key / containers | Focus & announcements |
 |---|---|---|---|---|---|---|---|
-| **Void** | Scroll to top (in `requestAnimationFrame` after commit) | Restored (positions keyed by a random `history.state.__voidScrollKey`, kept in memory + `sessionStorage` `void:scroll:*`) | Restored after hydration | `scrollIntoView()` on the target; same-page `#x` skips the fetch | `preserveScroll` (Link/visit); `refresh()` preserves scroll | **Window only**; no custom key; no scroll-behavior option | **None** (no announcer, no focus reset) |
+| **Void** | GET navigations scroll to top (in `requestAnimationFrame` after commit). An action or form that stays on the same URL keeps scroll unless `preserveScroll: false`; a redirect scrolls like a navigation (`pages/navigation-engine.ts` `makeCommit`) | Restored (positions keyed by a random `history.state.__voidScrollKey`, kept in memory + `sessionStorage` `void:scroll:*`) | Restored after hydration | `scrollIntoView()` on the target; same-page `#x` skips the fetch | `preserveScroll` (Link/visit/`action()`; React `useForm` hook option; Vue/Svelte/Solid per submit); `refresh()` preserves scroll | **Window only**; no custom key; no scroll-behavior option | **None** (no announcer, no focus reset) |
 | **Next.js** | `scroll` default: keep position if the new page is visible, else scroll to the first element (skips sticky/fixed) | Preserved; [CC] Activity keeps routes mounted | — | Yes | `scroll={false}` | `<html data-scroll-behavior="smooth">` | **Route announcer built in** (`docs/03-architecture/accessibility.mdx`; not in inventory) |
 | **React Router** | Top | Restored | `sessionStorage` (`storageKey`) + inline script to prevent flash | Not documented | `preventScrollReset` | `getKey(location, matches)` | Not automatic (docs) |
 | **TanStack Start** | Top (and `scrollToTopSelectors`) | Restored **before paint** | — | `hashScrollIntoView` (default on) | `resetScroll: false` | `getScrollRestorationKey`, `scrollRestorationBehavior`, `useElementScrollRestoration` + `data-scroll-restoration-id` (element/virtualized) | Not documented |

@@ -1,6 +1,6 @@
 # 3. Data loading
 
-**Versions:** Void 1.5.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default)
 
@@ -9,7 +9,7 @@
 ## At a glance
 
 - **Model.** Void is Inertia-style. Each page has exactly **one server-only `loader`** in its `.server.ts` companion. Every GET navigation fetches one JSON page object. There are no layout loaders, no client or isomorphic loaders, no component-level fetching, and no data cache beyond the prefetch cache. The model is easy to reason about and has no loader waterfalls. It is also the narrowest model of the eight.
-- **Biggest gap: layout and segment data.** All 7 peers let layouts or nested segments load their own data. In Void, cross-page data comes only from global middleware (`c.set('shared')` → `useShared()`), and that middleware is recomputed on every navigation, mutation and prefetch.
+- **Biggest gap: layout and segment data.** All 7 peers let layouts or nested segments load their own data. In Void, cross-page data comes only from global middleware (`c.set('shared')` → `useShared()`), and that middleware runs on every navigation, mutation request and prefetch. It does not run again when the action re-runs the loader in the same response, so `shared` stays as the action left it (docs/guide/pages-routing/actions-and-forms.md).
 - **Serialization is plain JSON.** Payloads go through `JSON.stringify`, so `Date` becomes a string, `Map`/`Set` become `{}`, and `BigInt` throws. Every peer documents at least some types beyond JSON. Three peers (Nuxt, SvelteKit, SolidStart) also have hooks for custom types.
 - **Deferred data is solid but coarse.** `defer()` / `defer('group', fn)` stream, but only as **top-level** props. Resolvers start only **after** the loader returns and the first chunk is built, and after a mutation they keep their last values. React Router, TanStack Start, SvelteKit and SolidStart stream promises from anywhere in the returned data, and the work starts as soon as the promise is created.
 - **There is no invalidation model beyond "refresh this page".** Void has no targeted invalidation by key, tag or URL (5 peers have it), no automatic dependency tracking (3 peers), and no per-route revalidation policy (4 peers). With a single loader, `router.refresh()` already re-runs everything there is to re-run.
@@ -64,7 +64,7 @@
 
 **Behavioral differences that matter:**
 - In Void, data for a page comes only from that page's leaf. In every peer, a layout can own its data, and the layout keeps that data while the user moves between its children: Next.js reuses layout segments, SvelteKit and SolidStart reuse data whose dependencies did not change, and TanStack Start serves it from the SWR cache.
-- Void's only cross-page mechanism, `shared`, comes from global or per-route middleware. It is not scoped to a layout subtree, it is untyped per page (one `CloudContextVariables` type for everything), and it runs on every page request: HTML, JSON navigation, prefetch, and the loader re-run after an action.
+- Void's only cross-page mechanism, `shared`, comes from global or per-route middleware. It is not scoped to a layout subtree, it is untyped per page (one `CloudContextVariables` type for everything), and global middleware runs once per page request (HTML, JSON navigation, prefetch, and the action request). It does not run again for the loader re-run in that same response. The loader's own `defineHandler` middleware does (`protocol.ts` `runLoader`).
 
 **Void gap: missing.** Void has no layout loader, so it also has no parent-data access (SvelteKit `parent()`, TanStack Start `parentMatchPromise` / `beforeLoad` context, React Router `useRouteLoaderData` on the client), no per-layout revalidation, and no component-level server fetching.
 
@@ -214,7 +214,7 @@
 
 | Framework | Layout-level data | Global shared data | How children reach parent data | Re-run behavior |
 |---|---|---|---|---|
-| **Void** | ✗ | Middleware `c.set('shared', {...})` → `useShared()`, typed through `CloudContextVariables` | n/a | Middleware runs on every page request, including JSON navigations, prefetches and post-action re-renders |
+| **Void** | ✗ | Middleware `c.set('shared', {...})` → `useShared()`, typed through `CloudContextVariables` | n/a | Global middleware runs once per request, including JSON navigations and prefetches. An action's loader re-run does not run it again; update `shared` in the action, or redirect |
 | **Next.js** | Layout Server Components | Root layout / context providers; promise shared via context | `React.cache` dedupe | Layouts are not re-rendered on navigation |
 | **React Router** | Layout-route loaders | Root loader; middleware `context` | Client: `useRouteLoaderData(id)`, `useMatches()`. Server: middleware context | Revalidated on every navigation by default |
 | **TanStack Start** | Layout-route `loader` / `beforeLoad` | Router `context` (DI) | `beforeLoad` context merged downward; `parentMatchPromise` | SWR |

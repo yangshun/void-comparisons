@@ -1,6 +1,6 @@
 # Bugs and hazards found in Void's source
 
-Found while comparing Void at commit [`65eb7f0`](https://github.com/voidzero-dev/void/commit/65eb7f07f020fda6586dba4c2d2d03aaab000cc3) with the other frameworks. When a bug is fixed, its row is removed.
+Found while comparing Void with the other frameworks. When a bug is fixed, its row is removed. Re-checked against [`76d1a8a`](https://github.com/voidzero-dev/void/commit/76d1a8a6db0ddb4a16d903ebe9673a923bf5b539) (1.6.2, 2026-11-06); every row below is still present.
 
 These are separate from feature gaps. Every row was found by a comparison agent and cites the file it comes from. **Double-checked** marks the ones then confirmed a second time by reading the code directly.
 
