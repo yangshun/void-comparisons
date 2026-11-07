@@ -21678,37 +21678,103 @@ footer.colophon p { max-width: 90rem; margin: 0 auto; font-size: 13px; color: va
 </tbody>
 </table></div>
 </article></template><template id="view-quick-wins"><article class="doc"><h1 id="quick-wins-quick-wins">Quick wins</h1>
-<p>Small changes that close a gap or fix a rough edge, taken from the area comparisons. Several are already half-built in Void's source.</p>
-<ul>
-<li><strong>Expose <code>cacheVisitedPageData</code>.</strong> It's already implemented, so this would give back/forward reuse without a refetch.</li>
-<li><strong><code>InferProps&lt;T&gt;</code> = <code>Serialize&lt;…&gt;</code></strong> so page prop types match what actually arrives.</li>
-<li><strong>Honor <code>c.status()</code></strong> on rendered pages and page JSON.</li>
-<li><strong>Await <code>head()</code></strong>, which makes it async.</li>
-<li><strong>Expose the route id and pattern</strong> in <code>useRouter()</code>. <code>useParams&lt;'/users/:id'&gt;()</code> is typed; inferring that pattern from the component file, and typing <code>c.req.param()</code> without a <code>PageParams</code> cast, are still open.</li>
-<li><strong>Turn silent client stubs into build errors.</strong></li>
-<li><strong>Adapter parity:</strong>
-<ul>
-<li>per-submit <code>replace</code> and the other visit options for React <code>useForm</code>. <code>preserveScroll</code> is a hook option, and an in-place action keeps scroll by default;</li>
-<li>multipart uploads from <code>useIslandForm</code>, which today always sends JSON;</li>
-<li>consistent <code>preserveState</code> across adapters.</li>
-</ul></li>
-<li><strong>Validate island strategy strings</strong> (a typo currently means the island never hydrates, with no warning) and page-flag exports (non-literal <code>ssr</code>/<code>prerender</code>/<code>revalidate</code> values are silently ignored).</li>
-<li><strong>A code-only prefetch option</strong> (Common 5).</li>
-<li><strong>Default <code>&lt;meta charset&gt;</code> and viewport tags.</strong></li>
-<li><strong>Docs only:</strong>
-<ul>
-<li><code>hono/cookie</code></li>
-<li>the <code>default</code>-export catch-all method handler</li>
-<li><code>public/404.html</code> and <code>500.html</code> for Worker apps</li>
-<li>the <code>x-isr-cache</code> header</li>
-<li>the dev error overlay</li>
-<li>Svelte <code>&lt;svelte:head&gt;</code></li>
-<li><code>VOID_INSPECTOR_PORT</code></li>
-<li><code>c.executionCtx.waitUntil</code> on Cloudflare</li>
-<li>Tailwind</li>
-<li><code>llms.txt</code></li>
-</ul></li>
-</ul>
+<p>Small changes that close a gap or fix a rough edge, taken from the area comparisons. Several are already half-built in Void's source. Re-checked against <a href="https://github.com/voidzero-dev/void/commit/76d1a8a6db0ddb4a16d903ebe9673a923bf5b539"><code>76d1a8a</code></a> (1.6.2, 2026-11-06).</p>
+<h2 id="quick-wins-already-in-the-engine">Already in the engine</h2>
+<h3 id="quick-wins-expose-cachevisitedpagedata">Expose <code>cacheVisitedPageData</code></h3>
+<p>Back and forward always refetch the page JSON. The navigation engine already keeps a visited-page cache with stale-while-revalidate, and none of the adapter plugins pass the option through. Wiring it on the plugin, reusing the existing <code>cacheFor</code> syntax, gives back/forward reuse. Prefetch is the only client cache today, so a still-valid prefetch entry is the only return visit that skips the loader. <span class="pv pv-cm">Common (5)</span>. <a href="#caching">Caching</a>.</p>
+<h3 id="quick-wins-inferpropst--serialize"><code>InferProps&lt;T&gt;</code> = <code>Serialize&lt;…&gt;</code></h3>
+<p><code>export type Props = InferProps&lt;typeof loader&gt;</code> reports the loader's raw return type (<code>pages/defer.ts</code> reads <code>__output</code>). The wire is plain JSON (<code>pages/serialize.ts</code>), so a <code>Date</code> is typed <code>Date</code> and arrives as a string, and <code>undefined</code> keys disappear. <code>Serialize&lt;T&gt;</code> already exists and is applied to typed <code>fetch</code>. Applying it to <code>InferProps</code> makes the type match the value.</p>
+<p>That is the cheap half of the serialization gap. Replacing the wire with devalue or Seroval touches all four adapters, hydration, prefetch and <code>/_void/pages/*.json</code>, and belongs with the page-protocol revision in the <a href="#overview">summary</a>. <span class="pv pv-ts">Table stakes (7)</span>. <a href="#data-loading">Data loading</a>, <a href="#type-safety">Type safety</a>.</p>
+<h3 id="quick-wins-honor-cstatus">Honor <code>c.status()</code></h3>
+<p>A loader can call <code>c.status(404)</code>, and <code>renderedResponse</code> in <code>pages/protocol.ts</code> drops it. The HTML page and the page JSON are always 200. The change is in that function and in the page-JSON response beside it. The edge cache stores only 200s, so a non-200 page stays uncached. The client engine already accepts any <code>X-VoidPages</code> response, so a non-200 page object needs a check before it is committed. Also a row in <a href="#bugs">Bugs</a>. <span class="pv pv-cm">Common (5)</span> for an arbitrary status; <span class="pv pv-ts">Table stakes (7)</span> for error statuses. <a href="#loading-error">Loading and errors</a>.</p>
+<h3 id="quick-wins-await-head">Await <code>head()</code></h3>
+<p><code>head()</code> is called and not awaited in <code>pages/protocol.ts</code>, so it cannot be async. Awaiting <code>headFn</code> is the whole change. Async work can already happen in the loader, with the result passed into a sync <code>head()</code>. <span class="pv pv-cm">Common (3–4)</span>: Next.js <code>generateMetadata</code> is async, TanStack head may return a Promise, and Astro allows top-level await. <a href="#metadata-seo">Metadata</a>.</p>
+<h3 id="quick-wins-expose-the-route-id-and-pattern">Expose the route id and pattern</h3>
+<p>The client already knows the page id and the URL pattern, from the manifest and the page object. <code>useRouter()</code> returns <code>url</code>, <code>path</code>, <code>query</code>, <code>params</code>, <code>visit</code>, <code>refresh</code>, <code>prefetch</code>, <code>flush</code> and <code>flushAll</code>. Exposing the id and the pattern is the change.</p>
+<p><code>useParams&lt;'/users/:id'&gt;()</code> types the param names when the caller passes the pattern. Two larger pieces stay open: inferring that pattern from the component file, and typing <code>c.req.param()</code> without an <code>as PageParams&lt;…&gt;</code> cast (<code>CloudContext</code> has no path generic). <span class="pv pv-ts">Table stakes (6)</span>. <a href="#routing">Routing</a>, <a href="#type-safety">Type safety</a>.</p>
+<h2 id="quick-wins-safety">Safety</h2>
+<h3 id="quick-wins-turn-silent-client-stubs-into-build-errors">Turn silent client stubs into build errors</h3>
+<p>A value import from a <code>.server.ts</code> companion into a component ships to the client. There is no <code>server-only</code> marker. The client stubs for <code>void/db</code>, <code>kv</code>, <code>ai</code>, <code>queues</code>, <code>storage</code> and <code>isr</code> are silent no-ops (<code>pages/plugin-client-stubs.ts</code>), so a mistaken import can leak server code or a client call can look like it worked. <code>void/live</code> and <code>void/durable</code> already fail the build. <code>void/sandbox</code> and <code>void/email</code> throw at call time. Reading a server env key from the client already fails the build, per key (<code>plugin-env-client-guard.ts</code>).</p>
+<p>The same treatment for the remaining stubs, plus a client-environment resolve check that allows <code>import type</code> and prints an import trace, is the first item under <em>What to work on first</em> in the <a href="#overview">summary</a>. The check has to cover <code>.vue</code> and <code>.svelte</code> script blocks as well as React and Solid. <code>routes/</code> and <code>middleware/</code> stay out of the client graph already. Also a row in <a href="#bugs">Bugs</a>. <span class="pv pv-ts">Table stakes (6)</span>. <a href="#server-api">Server API</a>.</p>
+<h2 id="quick-wins-adapter-parity">Adapter parity</h2>
+<h3 id="quick-wins-per-submit-visit-options-on-react-useform">Per-submit visit options on React <code>useForm</code></h3>
+<p>An in-place action keeps scroll by default: <code>preserveScroll</code> is on when the submission stays on the same path and query. React <code>useForm</code> accepts <code>preserveScroll</code> as a hook option. Vue, Svelte and Solid take <code>replace</code>, <code>viewTransition</code> and a data override on each submit call. React's submit methods are native form-action callbacks, so those options are absent there. <code>action()</code> already takes <code>preserveScroll</code> per call in every adapter. <span class="pv pv-cm">Common (3)</span> for <code>replace</code> and history <code>state</code>. <a href="#mutations">Mutations</a>.</p>
+<h3 id="quick-wins-multipart-uploads-from-useislandform">Multipart uploads from <code>useIslandForm</code></h3>
+<p><code>useForm</code> and <code>action()</code> switch to <code>multipart/form-data</code> when the body contains a <code>File</code>, <code>Blob</code> or <code>FileList</code>. <code>useIslandForm</code> always sends JSON (<code>pages/island-action.ts</code>) and reloads the page on success, so an island cannot upload a file. <span class="pv pv-ts">Table stakes (7)</span> for file uploads from every submission helper. <a href="#mutations">Mutations</a>.</p>
+<h3 id="quick-wins-preservestate-on-every-adapter"><code>preserveState</code> on every adapter</h3>
+<p>It is documented as a shared <code>Link</code> and visit option. Vue honors it, and otherwise remounts the page on every GET, including a query-only change. Solid honors it, and otherwise recreates the page on GET and on param change. React and Svelte ignore it: the same component instance survives by reconciliation, and there is no remount key. Also a row in <a href="#bugs">Bugs</a>, and design point 2 in the <a href="#overview">summary</a>. <a href="#routing">Routing</a>.</p>
+<h2 id="quick-wins-validation">Validation</h2>
+<h3 id="quick-wins-island-strategy-strings-and-page-flag-exports">Island strategy strings and page-flag exports</h3>
+<p>An island import is <code>with { island: 'load' | 'visible' | 'idle' | 'media:(q)' }</code>. An unknown string never hydrates, and nothing warns (<code>pages/island-imports.ts</code>, <code>client.ts</code> <code>scheduleHydration</code>). <code>ssr</code>, <code>prerender</code> and <code>revalidate</code> are read as AST literals (<code>pages/scan.ts</code>), so <code>export const revalidate = 60 * 5</code> is silently ignored. Astro errors on a non-literal. A check at scan time covers both.</p>
+<p>A separate bug sits next to this: on Node, Bun and Deno a page <code>revalidate</code> export is ignored even when it is a literal, and the build warning only fires for <code>routing.revalidate</code> (<code>packages/void/src/index.ts</code>). <a href="#rendering">Rendering</a>, <a href="#bugs">Bugs</a>.</p>
+<h3 id="quick-wins-a-code-only-prefetch-option">A code-only prefetch option</h3>
+<p>Every Void prefetch loads the page chunk and runs the loader. SvelteKit (<code>preload-code</code>), TanStack (<code>loadRouteChunk</code>), Solid (<code>usePreloadRoute</code>), Next.js (<code>auto</code>) and Nuxt (code and payload for prerendered pages) can prefetch code without data. That matters for a link whose loader is expensive or user-specific. The page and layout chunks are already separate dynamic imports, so this is a strategy flag such as <code>prefetch={{ data: false }}</code>. <code>router.prefetch()</code> is a separate path, and the Save-Data / slow-connection skip on <code>Link</code> prefetch does not apply to it. <span class="pv pv-cm">Common (5)</span>. <a href="#routing">Routing</a>.</p>
+<h3 id="quick-wins-default-charset-and-viewport">Default charset and viewport</h3>
+<p>Pages mode owns the HTML document, and the shell emits neither <code>&lt;meta charset&gt;</code> nor a viewport tag unless <code>head.meta</code> in <code>void.config.ts</code> adds them. Next.js always emits both. Nuxt defaults <code>charset: utf-8</code> and <code>width=device-width, initial-scale=1</code>. Emitting those two tags from the React, Vue, Svelte and Solid shells, and from the island template, is the change.</p>
+<p>A <code>theme-color</code> that varies by color scheme is a separate gap. <code>meta</code> in <code>pages/head.ts</code> serializes name, property, content and charset, so two <code>theme-color</code> entries collapse. <span class="pv pv-df">Differentiator (2)</span>. <a href="#metadata-seo">Metadata</a>.</p>
+<h2 id="quick-wins-docs-only">Docs only</h2>
+<p>These already work. The docs do not say so.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>What to write down</th>
+<th>Area</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hono/cookie</code></td>
+<td>Cookie get, set and delete. Hono's helpers are the cookie API, and loaders can use them. <span class="pv pv-ts">Table stakes (7)</span>.</td>
+<td><a href="#server-api">Server API</a></td>
+</tr>
+<tr>
+<td><code>default</code> export</td>
+<td>A <code>routes/</code> file with no recognized method export is registered with <code>app.all()</code> and dispatched to <code>default</code> (<code>router/compile.ts</code>). Typing that export, and failing the build when it is missing, is a small step past the docs. <span class="pv pv-cm">Common (4)</span>.</td>
+<td><a href="#server-api">Server API</a></td>
+</tr>
+<tr>
+<td><code>public/404.html</code> and <code>500.html</code></td>
+<td>Documented for static builds. They also work for Worker apps. A custom <code>500.html</code> is served for every failing request, including <code>/api/*</code> and non-GET (<code>routing-errors.ts</code> <code>serveCustomPage</code>). That over-broad serving stays an open bug.</td>
+<td><a href="#loading-error">Loading and errors</a></td>
+</tr>
+<tr>
+<td><code>x-isr-cache</code></td>
+<td>Response header <code>HIT</code>, <code>MISS</code> or <code>STALE</code>, from <code>packages/isr</code>. <code>X-Void-Routing</code> and <code>X-Void-No-Match</code> are the documented edge-rule headers.</td>
+<td><a href="#dev-tooling">Dev tooling</a></td>
+</tr>
+<tr>
+<td>Dev error overlay</td>
+<td>The server overlay exists, shows the <code>cause</code> chain, and its links open VS Code only. Client errors stay out of it. Documenting the overlay is the quick part. Extending it to client errors and a configurable editor is <span class="pv pv-cm">Common (3)</span>.</td>
+<td><a href="#dev-tooling">Dev tooling</a></td>
+</tr>
+<tr>
+<td>Svelte <code>&lt;svelte:head&gt;</code></td>
+<td>Svelte SSR injects it into <code>&lt;head&gt;</code> (<code>packages/svelte/src/plugin-pages.ts</code>). React, Vue and Solid have no component-level head, <span class="pv pv-cm">Common (5)</span>. React renders inside <code>#app</code>, so React 19 metadata hoisting cannot reach <code>&lt;head&gt;</code> during SSR.</td>
+<td><a href="#metadata-seo">Metadata</a></td>
+</tr>
+<tr>
+<td><code>VOID_INSPECTOR_PORT</code></td>
+<td>The inspector port is undocumented, and there is no debugging guide. Coded diagnostics are <span class="pv pv-cm">Common (4)</span>.</td>
+<td><a href="#dev-tooling">Dev tooling</a></td>
+</tr>
+<tr>
+<td><code>c.executionCtx.waitUntil</code></td>
+<td>Works on Cloudflare, and internal ISR uses it. On Node, Bun and Deno <code>executionCtx</code> is not passed to <code>app.fetch</code> (<code>runtime/routing.ts</code> <code>nodeTarget</code>). A portable <code>after()</code> is <span class="pv pv-df">Differentiator (2)</span> and stays a separate piece of work.</td>
+<td><a href="#server-api">Server API</a></td>
+</tr>
+<tr>
+<td>Tailwind</td>
+<td>It should already work through Vite. What is missing is a docs page and a <code>void init</code> option. <span class="pv pv-ts">Table stakes (7)</span>. An installer in the style of <code>astro add</code> is the larger idea, <span class="pv pv-cm">Common (3)</span>.</td>
+<td><a href="#styling">Styling</a></td>
+</tr>
+<tr>
+<td><code>llms.txt</code></td>
+<td>Next.js, Nuxt and SolidStart publish one. Void's docs are VitePress, so adding the file is small. <span class="pv pv-cm">Common (3)</span>. An app-aware dev-server MCP is <span class="pv pv-cm">Common (4)</span> and stays a separate gap.</td>
+<td><a href="#dev-tooling">Dev tooling</a></td>
+</tr>
+</tbody>
+</table></div>
 </article></template>
 
 <script>
