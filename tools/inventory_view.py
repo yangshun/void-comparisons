@@ -12,7 +12,7 @@ import re
 from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 
 FACTS = {
-    "void": [("Version", "1.5.0"), ("UI libraries", "React 19, Vue 3.5, Svelte 5, Solid 1.9"), ("Bundler", "Vite 8"),
+    "void": [("Version", "1.10.0"), ("UI libraries", "React 19, Vue 3.5, Svelte 5, Solid 1.9"), ("Bundler", "Vite 8"),
              ("Server", "Hono"), ("Runtime", "Cloudflare Workers by default; Node, Bun or Deno")],
     "nextjs": [("Version", "16.4 (App Router)"), ("UI library", "React 19.2+"), ("Bundler", "Turbopack (Webpack optional)"),
                ("Server", "Next.js Node server"), ("Runtime", "Node.js 20.9+")],
@@ -31,7 +31,7 @@ FACTS = {
               ("Runtime", "Static by default; Node, Cloudflare and others through adapters")],
 }
 DOCS = {
-    "void": ("voidzero-dev/void", "65eb7f07f020fda6586dba4c2d2d03aaab000cc3", "2026-11-04"),
+    "void": ("voidzero-dev/void", "268c2717981fa09b34994b155966da7d01076b49", "2026-11-17"),
     "nextjs": ("vercel/next.js", "a47959503adac8080a8b9a35f79617740d97925f", "2026-11-03"),
     "react-router": ("remix-run/react-router", "db80dda076ec9cdcefff480079252fe0c977710e", "2026-11-02"),
     "tanstack-start": ("TanStack/router", "da8c28c498230a5730ce75b2693baeeb3ef68ac1", "2026-11-03"),
@@ -40,8 +40,9 @@ DOCS = {
     "solidstart": ("solidjs/solid-docs", "9a9d77a75642f6e2ab68d80b0081d45ad3424b13", "2026-10-29"),
     "astro": ("withastro/docs", "c73a3bea5a635c1afce0f0516ff22ecb34a3d7d4", "2026-11-03"),
 }
-# Same categories as the area sidebar, in the same order. Inventory numbers stay as written:
-# area 10 was later split into images, styling and markdown, and 8 sits with 12 under Developer Experience.
+# Same categories as the area sidebar, in the same order. The rendered headings drop the
+# original 1–12 numbers: type safety (8) sits with dev tooling, so that sequence no longer
+# reads in order. Area 10 was later split into images, styling and markdown.
 CATEGORIES = [
     ("Pages", (1, 2, 3, 4)),
     ("Server", (5, 6, 7)),
@@ -256,6 +257,50 @@ def _category_heading(soup, slug: str, label: str):
     return h
 
 
+def _strip_section_numbers(soup):
+    """Drop the original 1–12 prefixes, and turn "§N" into a link to that section."""
+    by_num = {}
+    for h in soup.find_all("h3"):
+        m = re.match(r"^\s*(\d+)\.\s+(.*\S)\s*$", h.get_text())
+        if not m or not h.get("id"):
+            continue
+        num, title = int(m.group(1)), m.group(2)
+        by_num[num] = (title, h["id"])
+        h.clear()
+        h.append(title)
+    if not by_num:
+        return
+    pat = re.compile(r"§(\d+)")
+    for text in list(soup.find_all(string=pat)):
+        if isinstance(text, Comment) or text.parent is None or text.parent.name in {"code", "pre", "a", "h1", "h2", "h3"}:
+            continue
+        parts = pat.split(str(text))
+        nodes = []
+        for i, part in enumerate(parts):
+            if i % 2 == 0:
+                if part == "/" and 0 < i < len(parts) - 1:
+                    nodes.append(NavigableString(" / "))
+                elif part:
+                    nodes.append(NavigableString(part))
+                continue
+            info = by_num.get(int(part))
+            if info is None:
+                nodes.append(NavigableString(f"§{part}"))
+                continue
+            title, hid = info
+            link = soup.new_tag("a", href=f"#{hid}")
+            link.string = title
+            nodes.append(link)
+        if not nodes:
+            text.extract()
+            continue
+        text.replace_with(nodes[0])
+        cursor = nodes[0]
+        for node in nodes[1:]:
+            cursor.insert_after(node)
+            cursor = node
+
+
 def _regroup(soup, slug: str):
     """Put the numbered sections under the area categories, and anything else under Notes."""
     root = soup.body if soup.body is not None else soup
@@ -284,6 +329,7 @@ def _regroup(soup, slug: str):
             nodes[0].name = "h3"
             for n in nodes:
                 root.append(n)
+    _strip_section_numbers(soup)
 
 
 def inventory_view(slug: str, body_html: str) -> str:

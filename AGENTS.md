@@ -9,7 +9,7 @@ A feature gap analysis of Void (native "Void app" mode) against seven metaframew
 | `README.md` | Short intro that points readers to the site. Not part of the site |
 | `overview.md` | Summary, versions compared, roadmap, method. Becomes the site's Overview page word for word |
 | `areas/NN-slug.md` | The 14 area comparisons |
-| `inventories/*.md` | Raw per-framework inventories. Where they disagree with an area file, the area file wins; don't "fix" an inventory to match |
+| `inventories/*.md` | Raw per-framework inventories. Where they disagree with an area file, the area file wins. The other seven stay as the snapshot that was read. `inventories/void.md` is updated on every Void sync |
 | `bugs.md`, `quick-wins.md` | Bugs found in Void's source; small fixes |
 | `tools/` | The site build (see `tools/README.md`) |
 | `index.html` | **Generated.** Never edit it by hand |
@@ -47,4 +47,4 @@ A successful build prints `wrote …/index.html (… MB), N gap rows`. Check the
 - Check every "Void lacks X" against Void's source (`packages/`), not only its docs.
 - Prevalence counts how many of the other seven have the capability: Table stakes is 6–7, Common is 3–5, Differentiator is 1–2. It is a count, not a priority. Nothing in this repo is scored or graded.
 - In `bugs.md`, remove a bug's row once it's fixed.
-- The "Versions compared" tables in `overview.md` record the exact commit read for each framework. To update the analysis, diff each repo from its recorded commit (`overview.md` shows the command), re-check only the affected areas, then update those tables.
+- The "Versions compared" tables in `overview.md` record the exact commit read for each framework. To update the analysis, diff each repo from its recorded commit (`overview.md` shows the command), re-check only the affected areas, then update those tables. On a Void sync, also update `inventories/void.md` (version, commit, and every claim the diff changes) and the Void row in `FACTS`, `DOCS` (`tools/inventory_view.py`) and `SOURCES` (`tools/build.py`). Do not rewrite the other inventories to match the area files.

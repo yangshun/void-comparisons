@@ -684,6 +684,15 @@ footer.colophon p { max-width: 90rem; margin: 0 auto; font-size: 13px; color: va
   tocListM.addEventListener('click', onTocClick);
 
   viewEl.addEventListener('click', function (e) {
+    var link = e.target.closest('a[href^="#"]');
+    if (link && viewEl.contains(link)) {
+      var target = document.getElementById(link.getAttribute('href').slice(1));
+      if (target && viewEl.contains(target)) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+        return;
+      }
+    }
     var btn = e.target.closest('.expand-all');
     if (!btn) return;
     var open = btn.getAttribute('aria-pressed') !== 'true';

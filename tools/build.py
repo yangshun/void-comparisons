@@ -33,7 +33,7 @@ AREAS = [
     ("14-dev-tooling", "dev-tooling", "Dev tooling & observability"),
 ]
 SOURCES = [
-    ("void", "Void 1.5"),
+    ("void", "Void 1.10.0"),
     ("nextjs", "Next.js 16.4"),
     ("react-router", "React Router 8"),
     ("tanstack-start", "TanStack Start 1.169"),
@@ -319,8 +319,9 @@ views["overview"] = HERO + f'<article class="doc doc-overview">{overview}</artic
 def nav_item(slug, label, extra=""):
     return f'<li><a href="#{slug}" data-view="{slug}">{extra}<span>{html.escape(label)}</span></a></li>'
 
-# Area numbers stay on the links. Developer Experience pulls type safety out of
-# the server run and pairs it with dev tooling; build and deploy stays on its own.
+# Developer Experience pulls type safety out of the server run and pairs it with
+# dev tooling; build and deploy stays on its own. The links are not numbered:
+# the category order is not the original 1–14 order.
 AREA_GROUPS = [
     ("Pages", (1, 2, 3, 4)),
     ("Server", (5, 6, 7)),
@@ -340,7 +341,7 @@ for label, nums in AREA_GROUPS:
     nav.append(f'<p class="nav-group">{html.escape(label)}</p><ul>')
     for num in nums:
         slug, name = by_num[num]
-        nav.append(nav_item(slug, name, f'<span class="nav-num">{num}</span>'))
+        nav.append(nav_item(slug, name))
     nav.append('</ul>')
 nav.append('<p class="nav-group">Sources</p><ul>')
 for slug, name in SOURCES:
@@ -351,7 +352,7 @@ options = ['<option value="overview">Overview</option>', '<option value="gaps">G
            '<option value="bugs">Bugs found</option>', '<option value="quick-wins">Quick wins</option>']
 for label, nums in AREA_GROUPS:
     options.append(f'<optgroup label="{html.escape(label)}">')
-    options += [f'<option value="{by_num[num][0]}">{num}. {html.escape(by_num[num][1])}</option>' for num in nums]
+    options += [f'<option value="{by_num[num][0]}">{html.escape(by_num[num][1])}</option>' for num in nums]
     options.append('</optgroup>')
 options.append('<optgroup label="Sources">')
 options += [f'<option value="src-{slug}">{html.escape(name)}</option>' for slug, name in SOURCES]

@@ -38,7 +38,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 git -C void log --oneline 268c2717981fa09b34994b155966da7d01076b49..HEAD -- docs packages
 ```
 
-Then update the affected area pages and this table. The same command works for each framework repo with its own commit and paths.
+Then update the affected area pages, `inventories/void.md` (its version, commit, and every claim the diff changes), the Void facts card and sidebar label, and this table. The same command works for each framework repo with its own commit and paths. Leave the other seven inventories as the snapshots that were read.
 
 ## How to read the gap lists
 
@@ -224,5 +224,5 @@ The roadmap should protect these:
 
 1. **Choosing the areas.** The areas were chosen with one rule: an area is in scope if Next.js has it. There were 12 at first; "Assets & styling" was later split into three (images, fonts & scripts; CSS & styling; Markdown & content) because it mixed unrelated topics. The inventories still use the original 12 headings.
 2. **Inventories.** For each of the 8 frameworks, an agent read that framework's current docs: Void's docs plus source; the others' docs from a sparse clone of their repos, plus SvelteKit's generated type definitions. Each agent wrote an option-level inventory of every public API in scope, with defaults, behavior and edge cases, citing a file for each claim.
-3. **Comparisons.** For each area, an agent compared all 8 inventories by capability, re-checked doubtful claims against the docs, and checked every "Void lacks X" against `packages/`. The comparisons corrected the inventories where needed; each area file notes these corrections. The inventories under **Sources** are the raw, uncorrected versions, so where they disagree, the area files win.
+3. **Comparisons.** For each area, an agent compared all 8 inventories by capability, re-checked doubtful claims against the docs, and checked every "Void lacks X" against `packages/`. The comparisons corrected the inventories where needed; each area file notes these corrections. The inventories under **Sources** are the research notes, so where they disagree, the area files win. `inventories/void.md` is brought forward on each Void sync. The other seven stay as the snapshots that were read.
 4. **Spot-checks.** The highest-impact claims were checked a second time by reading Void's source directly.
