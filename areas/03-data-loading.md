@@ -1,6 +1,6 @@
 # 3. Data loading
 
-**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.10.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default)
 
@@ -10,11 +10,11 @@
 
 - **Model.** Void is Inertia-style. Each page has exactly **one server-only `loader`** in its `.server.ts` companion. Every GET navigation fetches one JSON page object. There are no layout loaders, no client or isomorphic loaders, no component-level fetching, and no data cache beyond the prefetch cache. The model is easy to reason about and has no loader waterfalls. It is also the narrowest model of the eight.
 - **Biggest gap: layout and segment data.** All 7 peers let layouts or nested segments load their own data. In Void, cross-page data comes only from global middleware (`c.set('shared')` → `useShared()`), and that middleware runs on every navigation, mutation request and prefetch. It does not run again when the action re-runs the loader in the same response, so `shared` stays as the action left it (docs/guide/pages-routing/actions-and-forms.md).
-- **Serialization is plain JSON.** Payloads go through `JSON.stringify`, so `Date` becomes a string, `Map`/`Set` become `{}`, and `BigInt` throws. Every peer documents at least some types beyond JSON. Three peers (Nuxt, SvelteKit, SolidStart) also have hooks for custom types.
+- **Serialization is devalue.** Page props, shared data and deferred values keep `Date`, `Map`, `Set`, `bigint`, `RegExp`, `URL`, `undefined`, and repeated or cyclic references (`docs/guide/pages-routing/loaders.md`, `pages/serialize.ts`). `InferProps` is that value. There is no hook for custom types. Three peers (Nuxt, SvelteKit, SolidStart) have one.
 - **Deferred data is solid but coarse.** `defer()` / `defer('group', fn)` stream, but only as **top-level** props. Resolvers start only **after** the loader returns and the first chunk is built, and after a mutation they keep their last values. React Router, TanStack Start, SvelteKit and SolidStart stream promises from anywhere in the returned data, and the work starts as soon as the promise is created.
 - **There is no invalidation model beyond "refresh this page".** Void has no targeted invalidation by key, tag or URL (5 peers have it), no automatic dependency tracking (3 peers), and no per-route revalidation policy (4 peers). With a single loader, `router.refresh()` already re-runs everything there is to re-run.
 - **The client cache is prefetch-only.** Back/forward navigation always refetches. Next.js, TanStack Start and SolidStart reuse cached data on back/forward. Void has an internal `cacheVisitedPageData` engine option, but no plugin option exposes it.
-- **Strengths to keep:** single-request navigation, `defer` groups (one resolver call feeds several props), four prefetch triggers with an SWR `cacheFor: [fresh, expire]` pair, an awaitable `router.prefetch()`, a static `/_void/pages/*.json` fast path, typed props (`InferProps` / `Serialize<T>`), per-route middleware around the loader, and one API across four UI libraries.
+- **Strengths to keep:** single-request navigation, `defer` groups (one resolver call feeds several props), four prefetch triggers with an SWR `cacheFor: [fresh, expire]` pair, an awaitable `router.prefetch()`, a static `/_void/pages/*.json` fast path, devalue props (`InferProps` matches the wire), per-route middleware around the loader, and one API across four UI libraries.
 - **Adapter split.** Deferred props are a `Promise` read with `use()` in React (with true Suspense streaming SSR) and a `{loading, value, error}` union in Vue, Svelte and Solid, whose component HTML is buffered.
 
 ## Gap list for this area
@@ -22,8 +22,7 @@
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
 | Layout / nested-segment loaders | Next.js (layout RSC), React Router (layout-route loaders), TanStack Start (layout loaders + `beforeLoad`), Nuxt (composables in layouts), SvelteKit (`+layout` load), SolidStart (parent `preload` + queries), Astro (layout frontmatter) | Table stakes (7) | Needs: parallel execution, coalescing into one JSON response (SvelteKit, React Router Single Fetch), a parent-data API, per-layout revalidation (otherwise every nav re-runs every layout), and a page-object shape keyed by layout. Layout components persist across navigations in all four adapters, so props must update in place. Interacts with ISR variants and `defer`. |
-| Serialization beyond JSON (`Date`, `Map`, `Set`, `BigInt`, …) | Next.js (Flight), React Router (turbo-stream), TanStack Start (Date/Error/FormData/undefined), Nuxt / SvelteKit / Astro actions (devalue), SolidStart (Seroval), Astro islands | Table stakes (7) | Touches the initial `<script>`, the JSON/NDJSON navigation payloads, prefetch, the static `/_void/pages/*.json` files and `Serialize<T>`. The JSON client parse is CSP-friendly; SolidStart defaults to Seroval `json` mode for the same reason. |
-| Custom-type serialization hook | Nuxt (`definePayloadPlugin`), SvelteKit (`transport`), SolidStart (`serialization.plugins`) | Common (3) | Depends on the previous gap. |
+| Custom-type serialization hook | Nuxt (`definePayloadPlugin`), SvelteKit (`transport`), SolidStart (`serialization.plugins`) | Common (3) | devalue is already the page wire. A reducer/reviver API would cover app classes. |
 | Client or isomorphic loaders | React Router (`clientLoader`), TanStack Start (isomorphic `loader`), Nuxt (composables), SvelteKit (universal load), SolidStart (isomorphic `query`) | Common (5) | Conflicts with Void's Inertia-style server-only model; would need a client data-source contract per adapter. |
 | Component-level data fetching (server) | Next.js (any RSC), Nuxt (any component), SolidStart (`createAsync`), Astro (any `.astro`); SvelteKit remote `query` [exp] | Common (4 stable + 1 [exp]) | React-only with RSC; the other adapters would need a query primitive like SolidStart `query()` or SvelteKit remote `query`. |
 | Promises anywhere in loader data, started at creation | Next.js, React Router, TanStack Start, SvelteKit (server load), SolidStart | Common (5) | Today: top-level `defer` keys only, started after the loader and the first chunk. Allowing an already-started promise inside `defer()` would close most of the gap without changing the protocol. |
@@ -43,7 +42,7 @@
 - **Single-request, single-loader navigation.** There are no waterfalls and no fan-out, and the cost per navigation is predictable. Middleware and the loader share one Hono context, unlike React Router, where client submissions send a separate POST and GET.
 - **`defer('group', fn)`.** One resolver call feeds several props, with per-group error isolation. No peer has this as an API.
 - **Prefetch ergonomics.** Four triggers plus arrays, per-link `cacheFor`, and an SWR pair `[fresh, expire]`. Code and data load in parallel, and `router.prefetch()` is awaitable. Deferred data is resolved inline, so a prefetched transition is instant. Static builds have a `/_void/pages/*.json` fast path.
-- **Typed end to end without codegen per page.** `InferProps<typeof loader>`, and `Serialize<T>` reflects the JSON wire format honestly.
+- **Typed end to end without codegen per page.** `InferProps<typeof loader>` matches the devalue round-trip, so a `Date` is a `Date` in the component. `Serialize<T>` still describes the JSON wire used by typed `fetch`.
 - **Per-route middleware around the loader** (`defineHandler(mw…, handler)`). It can edit the rendered page response after `next()`.
 - **Production masking of deferred errors.** Messages from `HTTPException` pass through, so internal details don't leak.
 - **Isomorphic typed `fetch`.** It runs in-process on the server and forwards `cookie`/`authorization`, similar to Nuxt `useRequestFetch` and the SvelteKit enhanced `fetch`.
@@ -110,7 +109,7 @@
 
 | Framework | Wire format | Documented types beyond JSON | Promises in data | Custom types | Notes |
 |---|---|---|---|---|---|
-| **Void** | `JSON.stringify` → `<script type="application/json">` (initial); JSON or NDJSON (navigation) | **none**. `Serialize<T>` types `Date` as `string` and drops `bigint`, functions and `undefined`. At runtime `JSON.stringify` turns `Map`/`Set` into `{}` and **throws** on `BigInt` | top-level `defer()` keys only | none | pages/serialize.ts, pages/protocol.ts `pageJsonResponse`. A JSON-200 `Response` from a loader is parsed into props. |
+| **Void** | devalue envelope `{"__void":"devalue","data":…}` (`pages/serialize.ts`), escaped for a script tag. Pre-devalue JSON still decodes. A client on an older protocol version gets a document reload. | `Date`, `Map`, `Set`, `bigint`, `RegExp`, `URL`, `undefined`, repeated and cyclic references (`docs/guide/pages-routing/loaders.md`). Functions and class instances are not supported. | top-level `defer()` keys only | none | Island frontmatter uses the same serializer. A JSON `Response` from a loader is still parsed into props. |
 | **Next.js** | RSC Flight | "React-serializable" props, including promises (inventory). Per React's own docs (not re-checked here), that also covers `Date`, `Map`, `Set`, JSX and Server Function references | ✓ (promise props + `use()`) | `experimental.taint` blocks values | |
 | **React Router** | turbo-stream (Single Fetch `.data`; one request per navigation, confirmed in CHANGELOG) | promises, `Map`, `Set`, `Date`, … ("aligned with RSC serializable types") | ✓ nested | — | |
 | **TanStack Start** | router serializer | `undefined`, `Date`, `Error`, `FormData` (docs say `Map`/`Set`/`BigInt` need a custom serializer) | ✓ unawaited promises | not yet documented (RSC payloads use Flight) | |
@@ -119,9 +118,9 @@
 | **SolidStart** | Seroval (`serialization.mode: 'json'`, the v2 default, or `'js'`) | Seroval types + web types (`Headers`, `Request`, `Response`, `URL`, `FormData`, …), `Temporal` | ✓ nested in server-fn returns | `serialization.plugins` (`createPlugin`) | Binary and form types bypass Seroval. |
 | **Astro** | island props attribute; Actions use devalue | `Map`, `Set`, `RegExp`, `Date`, `BigInt`, `URL`, typed arrays, `Infinity` | ✗ | — | Functions and cyclic structures are not supported. |
 
-**Behavioral differences that matter:** Void is the only framework whose page data is plain JSON. A loader that returns a `Date` gives the component a string. The types say so, but it is a common source of bugs. Returning a `BigInt` crashes the response.
+**Behavioral differences that matter:** Void's page data is devalue, the same family Nuxt and SvelteKit use. A `Date` arrives as a `Date`, and `InferProps` says so. Promises still have to be top-level `defer()` keys. There is no reducer for an app class.
 
-**Void gap: missing.** Void has no rich serializer and no custom-type hook. Since the client reads the payload with `JSON.parse`, switching to devalue, Seroval or turbo-stream would change the wire protocol: the initial `<script>`, the JSON and NDJSON navigation payloads, the prefetch payload, and the static `/_void/pages/*.json` files.
+**Void gap:** partial. The rich serializer is in place. Missing: a custom-type hook (Common, 3: Nuxt, SvelteKit, SolidStart) and promises anywhere in the returned data (Common, 5), which is its own row above.
 
 ## Request deduplication
 

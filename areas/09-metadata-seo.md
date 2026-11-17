@@ -1,6 +1,6 @@
 # 9. Metadata & SEO
 
-**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.10.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Note:** Void's head behavior was re-checked in `pages/head.ts` (server merge), `pages/head-client.ts` (client-navigation updates) and `pages/protocol.ts`.
 
@@ -70,7 +70,7 @@
 
 | Framework | Title | `meta` dedupe | `link` / `script` | Title template | html/body attrs |
 |---|---|---|---|---|---|
-| **Void** | Page > middleware > config (`pageHead?.title ?? middlewareHead?.title ?? configHead?.title`) | Key = `charset` \| `property:<p>` \| `name:<n>`. A later layer replaces the entry but keeps its first position. An entry with neither `name` nor `property` falls under `name:` and collapses with others like it. | **Concatenated** config → middleware → page, with **no dedupe and no removal**: a page cannot drop or replace a config `link` (e.g. `canonical`). | **Config only**: `titleTemplate` string with `%s` (only the first `%s` is replaced: `String.replace`). It also wraps config and middleware fallback titles. No page opt-out (`absolute`), no layout templates, no function form, and middleware cannot set it (`HeadDescriptor` has no `titleTemplate`). | Shallow merge; page wins |
+| **Void** | Page > middleware > config (`pageHead?.title ?? middlewareHead?.title ?? configHead?.title`) | Key = `charset` \| `property:<p>` \| `name:<n>`. A later layer replaces the entry but keeps its first position. An entry with neither `name` nor `property` falls under `name:` and collapses with others like it. | **Concatenated** config → middleware → page, with **no dedupe and no removal**: a page cannot drop or replace a config `link` (e.g. `canonical`). | `titleTemplate` string with `%s` (only the first `%s`; the title is inserted literally, so `$` in the title is not expanded). Middleware `headDefaults.titleTemplate` replaces the config template for that request, including `''` to drop it (`docs/guide/pages-routing/head.md`). It also wraps default error-page titles. No per-page `absolute`, no layout templates, no function form. | Shallow merge; page wins |
 | Next.js | Deepest segment wins | Field-level shallow merge root → page. A later segment **replaces whole nested objects** (`openGraph`, `robots`), so shared fragments are spread by hand. | n/a (not in metadata) | `title: { default, template, absolute }`. A template applies to **child segments** only and has no effect in `page`; `absolute` bypasses it. | Root layout JSX |
 | React Router | `meta`: the **deepest route's array replaces everything** (compose via `matches`). React 19 elements: no framework merge. | Same (replace) | `links` aggregated across all matched routes | None (compose via `matches`) | Root `Layout` JSX |
 | TanStack Start | Last (deepest) wins | Same `name`/`property`: deepest wins | Load/unload with route activity | "Composable" per docs but not documented | Root / `shellComponent` JSX |
@@ -81,7 +81,7 @@
 
 **Behavioral differences that matter:** Void's link concatenation means site-wide `link`s (canonical, alternate, preload) cannot be overridden per page. With Next.js's field-level replace, TanStack's unloading or Unhead's keyed dedupe, a page *can* override them.
 
-**Void gap:** partial. Missing: link/script dedupe or override keys (Nuxt `key`); per-layout title templates and an opt-out (`absolute`, Next.js); a function template and template params (Nuxt); middleware-settable `titleTemplate`.
+**Void gap:** partial. Missing: link/script dedupe or override keys (Nuxt `key`); per-layout title templates and a per-page opt-out (`absolute`, Next.js); a function template and template params (Nuxt). Middleware can set `titleTemplate`.
 
 ## Supported tags and attributes
 
@@ -100,7 +100,7 @@
 
 | Framework | What is updated on client navigation |
 |---|---|
-| **Void** | `meta` and `link` are diffed against `[data-void-head]` elements by attribute signature (unchanged tags are kept, stale ones removed). `title` is set **only if the new head has one**; otherwise the previous `document.title` **stays** (packages/void/src/pages/head-client.ts). `script`, `htmlAttrs` and `bodyAttrs` are **SSR-only**: a script declared by page B does not run on an A→B client navigation, and `<html lang>` does not change. |
+| **Void** | `meta` and `link` are diffed against `[data-void-head]` elements by attribute signature (unchanged tags are kept, stale ones removed). `document.title` is set to the new title, or to `''` when the destination has none (`pages/head-client.ts`). `script`, `htmlAttrs` and `bodyAttrs` are **SSR-only**: a script declared by page B does not run on an A→B client navigation, and `<html lang>` does not change. |
 | Next.js | Metadata re-resolved per navigation |
 | React Router | `<Meta>`/`<Links>` re-render for the new matches. React renders the whole document (root `Layout`), so `<html>` attributes can update (inferred). |
 | TanStack Start | Tags load and unload as routes become active or inactive. The document is rendered by React (inferred for attributes). |
@@ -109,7 +109,7 @@
 | SolidStart | Route tags removed or updated on route change |
 | Astro | With `<ClientRouter/>`: head is diffed (stylesheets and scripts kept, the rest replaced, `transition:persist` honored) and the title is announced. Without it: MPA navigation. |
 
-**Void gap:** partial. Missing: client-side re-application of `htmlAttrs`, `bodyAttrs` and `script` (Nuxt reactive; React Router and TanStack through a React-rendered document); title reset when the destination has no title.
+**Void gap:** partial. Missing: client-side re-application of `htmlAttrs`, `bodyAttrs` and `script` (Nuxt reactive; React Router and TanStack through a React-rendered document). A destination with no title clears `document.title`.
 
 ## Metadata from loaded data and streaming metadata
 
@@ -157,7 +157,7 @@
 
 | Framework | Canonical | hreflang / alternates | Absolute URL base | JSON-LD |
 |---|---|---|---|---|
-| **Void** | Manual `link: [{ rel: 'canonical', href }]`; `c.originalUrl()` gives the pre-rewrite URL (docs/guide/edge/rewrites.md) | Manual `link`s | None (no `site`/`metadataBase`) | `script: [{ type: 'application/ld+json', innerHTML: JSON.stringify(data) }]` works, but `innerHTML` is **not escaped**, so a `</script>` inside the data breaks out (packages/void/src/pages/head.ts). Because links are concatenated, a page cannot override a config-level canonical. |
+| **Void** | Manual `link: [{ rel: 'canonical', href }]`; `c.originalUrl()` gives the pre-rewrite URL (docs/guide/edge/rewrites.md) | Manual `link`s | No `site`/`metadataBase`. Relative `og:image`, `og:video`, `og:audio`, `og:url` and `twitter:image` are resolved against the request origin, including on client navigation. Prerender leaves them relative (`docs/guide/pages-routing/head.md`). | `script: [{ type: 'application/ld+json', innerHTML: JSON.stringify(data) }]` works, but `innerHTML` is **not escaped**, so a `</script>` inside the data breaks out (packages/void/src/pages/head.ts). Because links are concatenated, a page cannot override a config-level canonical. |
 | Next.js | `alternates.canonical` | `alternates.languages`, `media`, `types` | `metadataBase` (relative URL fields without it are a **build error**) | No API; render a native `<script>` and sanitize `<` (guide) |
 | React Router | `{ tagName: 'link', rel: 'canonical', href }` in `meta` | Manual | — | **`{ 'script:ld+json': object }`** (stringified automatically) |
 | TanStack Start | `links: [{ rel: 'canonical' }]`; `location.publicHref` under rewrites | Manual | — | Head `scripts` with `type: 'application/ld+json'` + `children`; GEO guide (schema.org types) |
@@ -168,7 +168,7 @@
 
 Extra: Next.js automatically marks 404s `noindex`.
 
-**Void gap:** partial. Missing: canonical/alternates helpers resolved against a configured site URL (Next.js, Astro); a safe JSON-LD helper (React Router); auto `noindex` on 404.
+**Void gap:** partial. Missing: canonical/alternates helpers resolved against a configured site URL (Next.js, Astro); a safe JSON-LD helper (React Router); auto `noindex` on 404. Relative Open Graph and Twitter media URLs are resolved against the request; canonical links are not.
 
 ## Viewport, theme-color, charset defaults
 

@@ -1,6 +1,6 @@
 # 6. Server & API
 
-**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.10.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · (src) found in Void's source but not in its docs
 
@@ -40,7 +40,6 @@
 | Directory-scoped (nested) middleware | React Router (route `middleware` nesting), TanStack Start (pathless-layout middleware) | Differentiator (2) | Could follow Void's layout tree (`pages/`) and `routes/` dirs, e.g. `_middleware.ts`. Note that layouts have no server companion today. |
 | Context types inferred from the middleware chain | TanStack Start (chain inference), React Router (typed `createContext` keys) | Differentiator (2) | `defineHandler(mw…, handler)` could thread Hono `Env` generics from typed middleware into the handler. Global middleware would still need augmentation. |
 | External proxy rewrites | Next.js (`rewrites()` external), Nuxt (`proxy` rule, `proxyRequest`) | Differentiator (2) | Could allow external destinations in `routing.rewrites` (managed dispatch impact) or document `hono/proxy`. |
-| Form/multipart body validation | Astro (actions `accept: 'form'`), SvelteKit (remote `form`, exp.) | Differentiator (2) | Also blocks no-JS forms (area 4). Extend `withValidator` to urlencoded/multipart with field coercion. |
 | Header validation slot | Nuxt (`defineValidatedHandler({ validate: { headers } })`) | Differentiator (1) | Small extension of `withValidator` slots; typed-`fetch` impact. |
 | Explicit `HEAD` override | Next.js, SvelteKit | Differentiator (2) | Currently a build error because Hono can't register HEAD. Would need a GET-handler wrapper that checks for a HEAD export. |
 | Server-function middleware | TanStack Start (function middleware) | Differentiator (1) | Only relevant if Void adds RPC/server functions. |
@@ -104,7 +103,7 @@
 
 | Framework | API | Slots | Libraries | Failure response | Form / multipart bodies | Type flow to client |
 |---|---|---|---|---|---|---|
-| **Void** | `defineHandler.withValidator({...})(handler)` on routes, page `loader`, `action`, `actions.*` | `body`, `query`, `params` | Standard Schema (Zod ≥3.25/4, Valibot ≥1, ArkType ≥2). Drizzle-derived through `void/drizzle-zod`, `void/drizzle-valibot`, `void/drizzle-arktype`. | 400 `{ error: 'Validation failed', issues: [{ slot, issues: [{ message, path }] }] }`. Page actions flatten this to `form.errors`. | **JSON only.** Non-JSON bodies get 400 `Invalid JSON body` (runtime/validator.ts). | Typed `fetch` `body/query/params`; `useForm` defaults and error keys. |
+| **Void** | `defineHandler.withValidator({...})(handler)` on routes, page `loader`, `action`, `actions.*` | `body`, `query`, `params` | Standard Schema (Zod ≥3.25/4, Valibot ≥1, ArkType ≥2). Drizzle-derived through `void/drizzle-zod`, `void/drizzle-valibot`, `void/drizzle-arktype`. | 400 `{ error: 'Validation failed', issues: [{ slot, issues: [{ message, path }] }] }`. Page actions flatten this to `form.errors`. | JSON, plus `application/x-www-form-urlencoded` and `multipart/form-data`. Bracket keys (`a[b]`, `a[0]`, `a[]`) are rebuilt into objects and arrays; scalars stay strings and files stay `File` (`runtime/handler/validator.ts`). | Typed `fetch` `body/query/params`; `useForm` defaults and error keys. |
 | **Next.js** | none (BYO) | — | — | — | — | — |
 | **React Router** | none (BYO; return `data(errors, { status: 400 })`) | — | — | — | — | — |
 | **TanStack Start** | `.validator()` on server functions and function middleware; route `validateSearch`, `params.parse` | data, search, params | Standard Schema or a function | Thrown to the caller | Server functions accept `FormData` (validator receives it) | Server-function input/output types |
@@ -162,7 +161,7 @@
 
 | Framework | Getter(s) | Mechanism | Scope / limits |
 |---|---|---|---|
-| **Void** | **No generic getter.** AsyncLocalStorage-scoped helpers exist for specific resources: `getUser()`/`getSession()` (`void/auth`), `env` (`void/env`), resource modules (`void/db`, `void/kv`, …). Server-side `fetch` from `void/client` forwards `cookie`/`authorization` through an internal `requestContext` store `{ request, executionCtx }` (src: runtime/routing.ts, router/compile.ts `compileWorkerClient`). | ALS (internal) | The Hono `Context`, request, cookies and response headers are reachable only through `c` passed down by hand. |
+| **Void** | **No generic getter.** AsyncLocalStorage-scoped helpers exist for specific resources: `getUser()`/`getSession()` (`void/auth`), `env` (`void/env`), resource modules (`void/db`, `void/kv`, …). Server-side `fetch` from `void/client` forwards `cookie`/`authorization` through an internal `requestContext` store `{ request, executionCtx }` (src: `runtime/routing/index.ts`, `router/compile.ts` `compileWorkerClient`). | ALS (internal) | The Hono `Context`, request, cookies and response headers are reachable only through `c` passed down by hand. |
 | **Next.js** | `cookies()`, `headers()`, `draftMode()`, `connection()`, `next/root-params` | ALS (async functions) | Anywhere in the server render path. Not inside `use cache` [CC]. `cookies().set` only in actions and Route Handlers. |
 | **React Router** | none (`request`/`context` args). Docs say `AsyncLocalStorage` works alongside, recommended for RSC. | — | — |
 | **TanStack Start** | `getRequest()`, `getRequestHeader()`, `getCookie/setCookie`, `setResponseHeader/Status` | ALS | Server functions, middleware, server routes. Loaders are isomorphic, so they have no request. |
@@ -196,7 +195,7 @@
 
 | Framework | API | Callable from | Runtime coverage | Notes |
 |---|---|---|---|---|
-| **Void** | **none documented.** `c.executionCtx.waitUntil()` (Hono) is reachable on the Cloudflare target only. | anywhere with `c` | **Cloudflare only.** On Node/Bun/Deno, `executionCtx` isn't passed to `app.fetch` (src: runtime/routing.ts `nodeTarget`), so Hono's getter has nothing to return. | Internal ISR already uses `ctx.waitUntil`. The internal ALS store carries `executionCtx`. |
+| **Void** | **none documented.** `c.executionCtx.waitUntil()` (Hono) is reachable on the Cloudflare target only. | anywhere with `c` | **Cloudflare only.** On Node/Bun/Deno, `executionCtx` isn't passed to `app.fetch` (src: `runtime/routing/index.ts` `nodeTarget`), so Hono's getter has nothing to return. | Internal ISR already uses `ctx.waitUntil`. The internal ALS store carries `executionCtx`. |
 | **Next.js** | **`after(cb)`** (stable since 15.1); Proxy `event.waitUntil` | Server Components (incl. `generateMetadata`), Server Functions, Route Handlers, Proxy | Node, self-host (drains on SIGTERM) and serverless (host supplies `waitUntil`) | Runs even after errors, `notFound()` or `redirect()`. Static pages run it at build/revalidate. Bounded by `maxDuration`. `cookies()`/`headers()` throw inside the callback in Server Components. |
 | **React Router** | none (Cloudflare example puts `ctx` into router context) | — | CF only | — |
 | **TanStack Start** | not documented | — | — | — |

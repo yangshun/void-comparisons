@@ -12,7 +12,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 
 | Framework | Version documented | Notes |
 |---|---|---|
-| Void | 1.6.2 | Docs plus `packages/` source |
+| Void | 1.10.0 | Docs plus `packages/` source |
 | Next.js | 16.4 stable | App Router only; a few 16.5-canary items are flagged |
 | React Router | 8.x | Framework mode only |
 | TanStack Start | 1.169+ (first stable) | React flavor; gaps in the Solid flavor are noted |
@@ -23,7 +23,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 
 | Framework | Repo and paths read | Commit (date) |
 |---|---|---|
-| Void | [voidzero-dev/void](https://github.com/voidzero-dev/void): `docs/`, `packages/` | [`76d1a8a6db0ddb4a16d903ebe9673a923bf5b539`](https://github.com/voidzero-dev/void/commit/76d1a8a6db0ddb4a16d903ebe9673a923bf5b539) (2026-11-06) |
+| Void | [voidzero-dev/void](https://github.com/voidzero-dev/void): `docs/`, `packages/` | [`268c2717981fa09b34994b155966da7d01076b49`](https://github.com/voidzero-dev/void/commit/268c2717981fa09b34994b155966da7d01076b49) (2026-11-17) |
 | Next.js | [vercel/next.js](https://github.com/vercel/next.js): `docs/01-app/` | [`a47959503adac8080a8b9a35f79617740d97925f`](https://github.com/vercel/next.js/commit/a47959503adac8080a8b9a35f79617740d97925f) (2026-11-03) |
 | React Router | [remix-run/react-router](https://github.com/remix-run/react-router): `docs/` | [`db80dda076ec9cdcefff480079252fe0c977710e`](https://github.com/remix-run/react-router/commit/db80dda076ec9cdcefff480079252fe0c977710e) (2026-11-02) |
 | TanStack Start | [TanStack/router](https://github.com/TanStack/router): `docs/start/`, `docs/router/` | [`da8c28c498230a5730ce75b2693baeeb3ef68ac1`](https://github.com/TanStack/router/commit/da8c28c498230a5730ce75b2693baeeb3ef68ac1) (2026-11-03) |
@@ -35,7 +35,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 **To update this analysis later**, diff each repo from its recorded commit, limited to the paths above, and re-check only the areas those changes touch. For Void:
 
 ```bash
-git -C void log --oneline 76d1a8a6db0ddb4a16d903ebe9673a923bf5b539..HEAD -- docs packages
+git -C void log --oneline 268c2717981fa09b34994b155966da7d01076b49..HEAD -- docs packages
 ```
 
 Then update the affected area pages and this table. The same command works for each framework repo with its own commit and paths.
@@ -67,7 +67,7 @@ Three design decisions explain most of what follows:
 
 ## What to work on first
 
-The gaps cluster around a handful of foundations. Several of them change the **page-object protocol**: layout data, richer serialization, error page objects, action results and status codes. **Recommendation: design them together as one protocol revision ("page protocol v2")** rather than migrating the client engine, the prefetch cache, the static `/_void/pages/*.json` files and all four adapters several times over.
+The gaps cluster around a handful of foundations. Since 1.6.2, Void has shipped in-layout `_error` and `_not-found` components, `c.status()` on rendered pages, and devalue page data (`Date`, `Map`, `Set`, `bigint`, and cyclic references survive the wire). What still changes the **page-object protocol** is layout data and action results. **Recommendation: design those together as one protocol revision ("page protocol v2")** rather than migrating the client engine, the prefetch cache, the static `/_void/pages/*.json` files and all four adapters several times over.
 
 The clusters below are in suggested order. The reasoning is in the last column of each.
 
@@ -81,18 +81,16 @@ The clusters below are in suggested order. The reasoning is in the last column o
 
 | Gap | Prevalence | Notes | Area |
 |---|---|---|---|
-| **Error and 404 UI rendered by the app**, kept inside layouts. Today any loader, action or render error is a whole-document static 500 (`public/500.html` or a built-in page) with no app components. Client navigations that hit an error do a full page reload. | Table stakes (7) | The protocol needs an "error page object" (status, message, data) that the client engine commits instead of setting `location.href`, plus an error/404 component convention in all 4 adapters. Includes throwable `notFound()` and `redirect()` (Common 5), per-segment boundaries (Common 4) and retry/reset (Common 4). | [7](areas/07-loading-error.md) |
-| **Status codes on rendered pages.** `c.status()` is ignored and pages are always 200. | Common (5); Table stakes (7) for error statuses | Small change in `renderedResponse`; ISR stores only 200s. | [7](areas/07-loading-error.md) |
-| **Layout server companions:** loaders, `head`, mode flags. | Table stakes (7) for loaders and for head | The biggest single unlock. Also gives subtree `ssr`/`prerender` inheritance (Common 4), parent-data access (Common 3), nested middleware and layout error boundaries. Needs parallel execution coalesced into one response, per-layout revalidation (so every navigation doesn't re-run every layout), a page object keyed by layout, and in-place prop updates (layouts persist across navigations in all 4 adapters). | [1](areas/01-routing.md), [2](areas/02-rendering.md), [3](areas/03-data-loading.md), [9](areas/09-metadata-seo.md) |
-| **A richer data format than plain JSON** (devalue/Seroval-class) | Table stakes (7) | Today `Date` arrives as a string, `Map`/`Set` become `{}`, and `BigInt` throws. Also enables promises anywhere in loader data, started as soon as they're created (Common 5), richer island props (Common 3) and custom type hooks (Common 3). **Do the type fix right away:** `InferProps<T>` currently claims the loader's raw types (e.g. `Date`) while the wire sends JSON. Make it `Serialize<…>`. | [3](areas/03-data-loading.md), [8](areas/08-type-safety.md) |
+| **Layout server companions:** loaders, `head`, mode flags. | Table stakes (7) for loaders and for head | The biggest single unlock. Also gives subtree `ssr`/`prerender` inheritance (Common 4), parent-data access (Common 3) and nested middleware. Needs parallel execution coalesced into one response, per-layout revalidation (so every navigation doesn't re-run every layout), a page object keyed by layout, and in-place prop updates (layouts persist across navigations in all 4 adapters). Error boundaries no longer depend on this: `_error` and `_not-found` already render inside the surrounding layouts. | [1](areas/01-routing.md), [2](areas/02-rendering.md), [3](areas/03-data-loading.md), [9](areas/09-metadata-seo.md) |
+| **Promises anywhere in loader data**, started as soon as they're created | Common (5) | devalue is the wire, but only top-level `defer()` keys stream, and their resolvers start after the loader returns and the first chunk is built. | [3](areas/03-data-loading.md) |
+| **Custom serialization hooks** | Common (3) | devalue already keeps `Date`, `Map`, `Set`, `bigint`, `RegExp`, `URL`, `undefined` and cyclic references, and `InferProps` matches that. There is no reducer/reviver API for app types. | [3](areas/03-data-loading.md) |
 | **Actions return data to the caller** | Table stakes (7) | A plain return value is ignored today, and a non-page 2xx `Response` forces a full page load. Add an ephemeral typed `result` to mutation responses, exposed as `form.result` and from `action()`. | [4](areas/04-mutations.md) |
 
 ### C. Forms and mutations (depends on B)
 
 | Gap | Prevalence | Notes | Area |
 |---|---|---|---|
-| **Forms that work without JavaScript** | Common (5) | React's `Form` renders a client function as its action. Vue, Svelte and Solid render a `<form>` with no `action`/`method` and call `preventDefault()`. The server already re-renders HTML for non-JS POSTs. What's missing: `method`/`action` attributes (with `?name`), a method override for PUT/PATCH/DELETE, and seeding `useForm` data and errors from the server page object. | [4](areas/04-mutations.md) |
-| **Validation of urlencoded and multipart bodies** | Common (3) | `withValidator` parses JSON only. This blocks the row above, validated file uploads, and GET/search forms (Common 4). | [4](areas/04-mutations.md), [6](areas/06-server-api.md) |
+| **Forms that work without JavaScript** | Common (5) | React's `Form` renders a client function as its action. Vue, Svelte and Solid render a `<form>` with no `action`/`method` and call `preventDefault()`. The server already re-renders HTML for non-JS POSTs, and `withValidator` now accepts urlencoded and multipart bodies. What's missing: `method`/`action` attributes (with `?name`), a method override for PUT/PATCH/DELETE, and seeding `useForm` data and errors from the server page object. | [4](areas/04-mutations.md) |
 | **Concurrent submissions that don't navigate** | Common (3) | Every submission is a router visit, and a new visit aborts the previous one on the client while the server keeps running. Needs fetcher-style keyed submissions with tracked state. | [4](areas/04-mutations.md) |
 | **Targeted or opt-out revalidation** | Common (4–5) | The current loader always re-runs, even after a `ValidationError`. There is no "only these props" or "skip the loader", no invalidation by key, tag or URL, and deferred props stay stale after a mutation. | [3](areas/03-data-loading.md), [4](areas/04-mutations.md) |
 
@@ -121,8 +119,7 @@ The clusters below are in suggested order. The reasoning is in the last column o
 | **Navigation lifecycle hooks**, plus blocking that covers back/forward and programmatic navigation | Table stakes (6) / Common (5) | Today the only guard is `Link onNavigate`. | [1](areas/01-routing.md) |
 | **Segment features:** optional segments (5), zero-length catch-all (4), param matchers that affect matching (4), partial-segment params (4) | Common | One parser plus the client matcher. | [1](areas/01-routing.md) |
 | **URL/search changes without a loader re-run**, plus history `state`, shallow routing and modal routes | Common (4–5) | Every query change refetches today, and Vue remounts the page. | [1](areas/01-routing.md) |
-| **Skew protection** (deployment ID, reload when versions mismatch or a chunk fails to load) | Common (5) | An unknown page component or a chunk-load failure after a deploy currently rejects the navigation with no reload. | [13](areas/13-build-deploy.md) |
-| **Trailing-slash policy** | Common (4) | | [1](areas/01-routing.md), [13](areas/13-build-deploy.md) |
+| **Skew protection** (deployment ID, reload when versions mismatch or a chunk fails to load) | Common (5) | A mismatched `X-VoidPages-Version` reloads the document, which covers a serialization upgrade. An unknown page component or a chunk-load failure after a deploy still rejects the navigation with no reload. | [13](areas/13-build-deploy.md) |
 
 ### G. Caching
 
@@ -170,7 +167,7 @@ The clusters below are in suggested order. The reasoning is in the last column o
 | Server and client error-reporting hooks | Common (4) | [7](areas/07-loading-error.md), [14](areas/14-dev-tooling.md) |
 | Instrumentation / OpenTelemetry | Common (3) | [14](areas/14-dev-tooling.md) |
 | In-browser devtools (route, page data, cache), which must work for all four UI libraries | Common (5) | [14](areas/14-dev-tooling.md) |
-| MCP server (an app-aware dev-server MCP is the most valuable kind); `llms.txt` | Common (4) / Common (3) | [14](areas/14-dev-tooling.md) |
+| MCP server (an app-aware dev-server MCP is the most valuable kind) | Common (4) | [14](areas/14-dev-tooling.md) |
 
 ---
 
@@ -193,7 +190,9 @@ The roadmap should protect these:
   - scroll restoration that survives a reload, and in-place actions that keep the scroll position;
   - view transitions in all 4 adapters;
   - non-GET `Link`s.
-- **Correct streaming semantics.** Status, headers and head are settled before the first byte, so there is no "200 on a streamed 404", no dropped headers and no head patch scripts.
+- **Correct streaming semantics.** Status, headers and head are settled before the first byte, so there is no "200 on a streamed 404", no dropped headers and no head patch scripts. `c.status()` is the status of the rendered page, and an `HTTPException` renders `_error` or `_not-found` at that status.
+- **In-layout errors in all four adapters.** `pages/_error` and `pages/_not-found` take `{ status, message }`, the nearest directory wins, and surrounding layouts stay. Client navigations commit that page object instead of reloading. Retry is `useRouter().refresh()`.
+- **devalue page data in all four adapters.** `Date`, `Map`, `Set`, `bigint`, `RegExp`, `URL`, `undefined`, and repeated or cyclic references survive rendering, hydration, navigation and deferred props. `InferProps` is the value the component receives.
 - **Deploy-time prerendering in the production Worker** that seeds the edge page cache before traffic switches. Unique.
 - **The most privacy-safe page cache in the set:**
   - it bypasses on any cookie or authorization header;

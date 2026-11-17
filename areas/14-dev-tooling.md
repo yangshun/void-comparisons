@@ -1,6 +1,6 @@
 # 14. Dev tooling & observability
 
-**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.10.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · (src) found in Void's source but not in its docs · (unverified) not confirmed in docs or source
 
@@ -15,7 +15,7 @@
   - No in-browser devtools or route/cache inspector (5/7 have one).
   - No server error-reporting hook (4/7, +2 partial).
   - No instrumentation/OpenTelemetry (3/7).
-  - No MCP server (4/7) and no `llms.txt` (3/7).
+  - No MCP server (4/7). The docs site publishes `llms.txt`.
   - No web-vitals helper (1/7), bundle analyzer (2/7) or configurable logger (1/7).
 - **Clearly ahead in two places:**
   - **Generators.** `void gen model|route|middleware|ssr|migration|cron|queue`; no other framework documents in-project generators (Nuxt `nuxt add` is unverified).
@@ -32,7 +32,6 @@
 | Client error-reporting hook | Next.js `instrumentation-client`; React Router `HydratedRouter onError`; SvelteKit client `handleError` | Common (3) | Lives in shared `navigation-engine.ts` / `client.ts` → covers all adapters. Pair with render-error capture per adapter (React boundaries, Vue `errorCaptured`, etc.). |
 | Instrumentation / OpenTelemetry | Next.js (`register()` + built-in spans), SvelteKit (`tracing.server` + `instrumentation.server.js`), React Router (stable `instrumentations` wrap API); TanStack [exp] recipe | Common (3) | Startup hook must run before app code in workerd and in Node. Span points: rules, middleware, handler/loader, action, render, ISR. Consider React Router's read-only wrap model (can't break requests). |
 | MCP server | Next.js built-in `/_next/mcp` (app-aware); Nuxt and Astro hosted docs MCP; SvelteKit `sv add mcp` | Common (4) | The highest value is a dev-server MCP (errors, logs, routes, bindings, resources, deploy status), which builds on the skills Void already ships. App-aware MCP alone is a Differentiator. |
-| `llms.txt` for docs | Next.js, Nuxt, SolidStart (inferred) | Common (3) | VitePress docs site; cheap. |
 | Auto data refresh on server-code edits | React Router Hot Data Revalidation; Next.js Server Component refresh | Differentiator (2) | A dev-only HMR event from the worker environment → client `router.refresh()`; respects `preserveState`. |
 | Client runtime error overlay / documented overlay | Next.js (server+client+build, source-mapped); SolidStart `devOverlay`; Astro overlay | Common (3) | Void's server overlay exists (undocumented, VS Code links only). Extend it to client errors and make the editor configurable. |
 | Web vitals helper | Next.js `useReportWebVitals` (with soft-nav fields) | Differentiator (1) | Navigation IDs are already in the client engine. |
@@ -62,7 +61,7 @@
 
 | Framework | Command / engine | Client HMR | Server-code edits | Runtime fidelity in dev | Notable options |
 |---|---|---|---|---|---|
-| **Void** | `vite dev` / `vp dev` (Vite 8) | Via each adapter's Vite plugin: React Fast Refresh (preamble injected into SSR HTML, src `routing-assets.ts`), `@vitejs/plugin-vue`, `vite-plugin-svelte`, `vite-plugin-solid`. **Island pages and `.md` pages force a full reload** (no client HMR). | Content edit → module invalidated, re-evaluated in workerd **on the next request** (no restart, no browser refresh, no data refresh). File add/remove under routes/pages → route module regenerated + full reload. `_redirects`/`_headers` change → rules re-merged + full reload. `env.ts` change → full reload. **New binding import detected (DB/KV/storage/AI/sandbox/email/auth) → in-page toast with click-to-restart** (src `plugin-restart.ts`, `/__void/restart` with a per-server token). | **Cloudflare target: workerd** (`@cloudflare/vite-plugin`), local D1/KV/R2 persisted to `.void/` (`voidPlugin({ persistTo })`), `remote: true` / `VOID_REMOTE=1` = deployed D1/KV/R2; Workers AI always remote. `auxiliaryWorkers` run alongside. Node target: Node. `vite preview` = workerd with local bindings (CF) or `app.js` (Node). | Dev email inbox, dev trigger endpoints for cron/queues (out of scope); undocumented `VOID_INSPECTOR_PORT` (workerd inspector port, `false` disables; src `index.ts`). |
+| **Void** | `vite dev` / `vp dev` (Vite 8) | Via each adapter's Vite plugin: React Fast Refresh (preamble injected into SSR HTML, src `runtime/routing/assets.ts`), `@vitejs/plugin-vue`, `vite-plugin-svelte`, `vite-plugin-solid`. **Island pages and `.md` pages force a full reload** (no client HMR). | Content edit → module invalidated, re-evaluated in workerd **on the next request** (no restart, no browser refresh, no data refresh). File add/remove under routes/pages → route module regenerated + full reload. `_redirects`/`_headers` change → rules re-merged + full reload. `env.ts` change → full reload. **New binding import detected (DB/KV/storage/AI/sandbox/email/auth) → in-page toast with click-to-restart** (src `plugin-restart.ts`, `/__void/restart` with a per-server token). | **Cloudflare target: workerd** (`@cloudflare/vite-plugin`), local D1/KV/R2 persisted to `.void/` (`voidPlugin({ persistTo })`), `remote: true` / `VOID_REMOTE=1` = deployed D1/KV/R2; Workers AI always remote. `auxiliaryWorkers` run alongside. Node target: Node. `vite preview` = workerd with local bindings (CF) or `app.js` (Node). | Dev email inbox, dev trigger endpoints for cron/queues (out of scope); undocumented `VOID_INSPECTOR_PORT` (workerd inspector port, `false` disables; src `index.ts`). |
 | **Next.js** | `next dev` (Turbopack default; `--webpack`) | Fast Refresh JS/TS/CSS | **Server Component edits refresh** (HMR fetch cache) | Node only | `-p`/`-H`, `--experimental-https[-key\|-cert\|-ca]`, persistent Turbopack FS cache, `.next/dev/lock` (a second `next dev` prints the running server), `allowedDevOrigins`, dev and build can run concurrently, memory knobs [exp] |
 | **React Router** | `react-router dev` (Vite) | Fast Refresh; route exports HMR-compatible; an extra custom export forces a full reload | **Hot Data Revalidation**: loaders affecting the current page re-run with no reload | workerd via `@cloudflare/vite-plugin`; Node otherwise | Vite flags; `unstable_optimizeDeps` [exp]; middleware-mode custom servers |
 | **TanStack** | `vite dev` / `rsbuild dev` | Vite/Rsbuild | Not documented | workerd via Cloudflare plugin; Netlify plugin emulates the platform | Route tree regenerated on file change |
@@ -86,7 +85,7 @@
 
 | Framework | Server errors | Client runtime errors | Build/compile errors | Editor links | Extras |
 |---|---|---|---|---|---|
-| **Void** | **Yes, undocumented** (src `runtime/routing-errors.ts`). Dev **500** HTML document responses (GET/HEAD, not `/api`, no extension, HTML-accepting) get an injected overlay: status, error + **`cause` chain** (depth-capped), parsed stack frames, minimize/restore. Also injected into a custom `public/500.html`. JSON/API/page-data error responses get none. A client navigation hitting a 500 falls back to a full document load, which then shows the overlay. | **None** (console only) | Vite's overlay (Vite behavior) | `vscode://file/…:line:col` only (no editor setting) | Same in all 4 adapters (server-side). `HTTPException` responses bypass it. |
+| **Void** | **Yes, undocumented** (src `runtime/routing/errors.ts`). Dev **500** HTML document responses (GET/HEAD, not `/api`, no extension, HTML-accepting) get an injected overlay: status, error + **`cause` chain** (depth-capped), parsed stack frames, minimize/restore. Also injected into a custom `public/500.html`. JSON/API/page-data error responses get none. A client navigation hitting a 500 falls back to a full document load, which then shows the overlay. | **None** (console only) | Vite's overlay (Vite behavior) | `vscode://file/…:line:col` only (no editor setting) | Same in all 4 adapters (server-side). `HTTPException` responses bypass it. |
 | **Next.js** | Yes, source-mapped | Yes | Yes | Yes | [Cache Components] blocking-route insights with fix cards linking `/docs/messages/*` and a **Copy prompt** for agents; **Vulnerability Insight** for a known CVE in the installed version; `logging.browserToTerminal` |
 | **React Router** | Unsanitized errors shown in `ErrorBoundary` in dev | Error boundary | Vite overlay (unverified) | — | — |
 | **TanStack** | Not documented | — | Vite (unverified) | — | Import-protection violations print traces + code frames; dev "mock" mode keeps the app running |
@@ -166,7 +165,7 @@
 
 | Framework | Bundled version-pinned docs | `AGENTS.md` management | Skills | MCP | `llms.txt` | Agent-aware CLI / dev server |
 |---|---|---|---|---|---|---|
-| **Void** | **`node_modules/void/docs/`** (synced at package build) | **`void init`** creates or updates a Void section in `AGENTS.md`; asks first in existing projects and keeps user text; skipped in CI/non-interactive | **2 skills** (`void`, `migrate-vite-cloudflare-to-void`) **auto-linked** into detected agent dirs. 16 agents (src `cli/agents.ts`): Claude Code, Amp, Codex, Cursor, Windsurf, Gemini CLI, GitHub Copilot, Cline, Roo, Kilo, Continue, Goose, opencode, Trae, Junie, Kiro. Skills read the *installed* docs. | **None** (grepped src and docs config) | **None** | — |
+| **Void** | **`node_modules/void/docs/`** (synced at package build) | **`void init`** creates or updates a Void section in `AGENTS.md`; asks first in existing projects and keeps user text; skipped in CI/non-interactive | **2 skills** (`void`, `migrate-vite-cloudflare-to-void`) **auto-linked** into detected agent dirs. 16 agents (src `cli/agents.ts`): Claude Code, Amp, Codex, Cursor, Windsurf, Gemini CLI, GitHub Copilot, Cline, Roo, Kilo, Continue, Goose, opencode, Trae, Junie, Kiro. Skills read the *installed* docs. | **None** (grepped src and docs config) | Docs site generates `llms.txt` with `vitepress-plugin-llms` (`docs/.vitepress/config.ts`) | — |
 | **Next.js** | **`node_modules/next/dist/docs/`** (16.2+); `@next/codemod agents-md` for older versions | **`next dev` manages an `AGENTS.md` block** when it detects an agent (default since 16.3; `agentRules`, `false` removes it); `create-next-app --agents-md` (default) | skills.sh: `next-dev-loop`, `next-bundle-optimizer`, `next-cache-components-*`, `next-partial-prefetching-*` (installed separately) | **Built-in `/_next/mcp` in dev** (app-aware): `get_errors`, `get_logs`, `get_page_metadata`, `get_project_metadata`, `get_routes`, `get_server_action_by_id`, `get_compilation_issues`, `compile_route`, `get_request_insights`; `experimental.mcpServer: false`. `next-devtools-mcp` bridge adds `nextjs_docs`, `browser_eval`… | `llms.txt`, `llms-full.txt`, `.md` URLs, `Accept: text/markdown` | `next upgrade --agent`; `experimental.agentUpgrade`, `agentFeedback`; overlay "Copy prompt"; dev lock file |
 | **React Router** | No | No | No | No | No | "API + Mode Availability Table … mostly for the LLMs" |
 | **TanStack** | No | No | No | No | No (GEO guide shows apps how to serve one) | TanStack Builder (AI-first, web) |
@@ -182,7 +181,6 @@
 
 **Void gap:** partial.
 - MCP server (Common: Next.js built-in, Nuxt and Astro hosted, SvelteKit add-on). The high-value variant is a dev-server MCP exposing errors, logs, routes, bindings and resources (Differentiator: Next.js).
-- `llms.txt` for docs (Common: Next.js, Nuxt, SolidStart-inferred).
 - Agent-aware dev server (background mode, lock file, JSON logs; Differentiator: Astro, Next.js).
 - AGENTS.md is updated only at `void init`. Next.js re-syncs on every `next dev`, so Void's version-specific text can go stale after an upgrade.
 
@@ -200,7 +198,7 @@
 | **Astro** | — | No | — | — | — |
 
 **Behavioral differences that matter:**
-- The design space runs from **"we emit spans"** (Next.js, SvelteKit) to **"we give you wrap points"** (React Router: read-only, can't break the app). Both need a hook that runs before app code. On Workers that also implies an `AsyncLocalStorage`-style context, which Void already uses (`requestContext`, src `runtime/routing.ts`).
+- The design space runs from **"we emit spans"** (Next.js, SvelteKit) to **"we give you wrap points"** (React Router: read-only, can't break the app). Both need a hook that runs before app code. On Workers that also implies an `AsyncLocalStorage`-style context, which Void already uses (`requestContext`, src `runtime/routing/index.ts`).
 - Void's natural span boundaries are already explicit in the compiled Hono app: routing rules, middleware chain, route handler/loader, action, page render, deferred streaming, ISR lookup.
 
 **Void gap:** missing. Common (3 stable: Next.js, React Router, SvelteKit; + TanStack [exp]). Design notes:
@@ -211,7 +209,7 @@
 
 | Framework | Server hook | Payload / context | Client hook |
 |---|---|---|---|
-| **Void** | **None.** Internal `app.onError`: an `HTTPException` returns its own response; anything else → `console.error` + 500 page (src `routing-errors.ts`). Possible workaround: read `c.error` after `await next()` in middleware (Hono behavior; not documented by Void, unverified). | — | None (the React adapter only `reportError`s failures while restoring the previous page) |
+| **Void** | **None.** Internal `app.onError`: an `HTTPException` returns its own response; anything else → `console.error` + 500 page (src `runtime/routing/errors.ts`). Possible workaround: read `c.error` after `await next()` in middleware (Hono behavior; not documented by Void, unverified). | — | None (the React adapter only `reportError`s failures while restoring the previous page) |
 | **Next.js** | `onRequestError(error, request, context)` in `instrumentation.ts` | Covers render, route, action and proxy errors; `renderType` incl. `'dynamic-resume'`; `revalidateReason` | `instrumentation-client.ts` |
 | **React Router** | `handleError` export in `entry.server.tsx` | Error + request args | `onError` on `<HydratedRouter>` |
 | **TanStack** | Partial: custom `src/server.ts` try/catch + `handleStartError` (Sentry example); middleware try/catch | — | `defaultOnCatch` |

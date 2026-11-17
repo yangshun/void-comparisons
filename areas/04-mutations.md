@@ -1,6 +1,6 @@
 # 4. Mutations
 
-**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.10.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary
 
@@ -11,21 +11,20 @@
 ## At a glance
 
 - **Model.** Void uses page actions: `action` or `actions = { name, default }` in the page's `.server.ts`, on `POST`/`PUT`/`PATCH`/`DELETE` of the page URL, with named actions addressed as `?name`. On the client, `useForm` + `Form`, `action()` and `Link method="post"` submit through the **router** as a page visit. After a successful action, the server re-runs the page loader and returns fresh props **in the same response**.
-- **Biggest gap: no progressive enhancement.** Void's `Form` cannot submit without JavaScript. React renders a function `action`; Vue, Svelte and Solid render `<form>` with no `action`/`method` and call `preventDefault()`. `withValidator` also parses JSON bodies only. Next.js, React Router, SvelteKit, SolidStart and Astro all work without JS (5/7).
+- **Biggest gap: no progressive enhancement.** Void's `Form` cannot submit without JavaScript. React renders a function `action`; Vue, Svelte and Solid render `<form>` with no `action`/`method` and call `preventDefault()`. `withValidator` does accept urlencoded and multipart bodies, and rebuilds `a[b]` / `a[0]` / `a[]` keys. Next.js, React Router, SvelteKit, SolidStart and Astro all work without JS (5/7).
 - **Second biggest gap: an action cannot return data to its caller.** A successful action yields only refreshed page props. A plain return value is ignored, and a non-page 2xx `Response` makes the client fall back to a **full page load**. All 7 peers can return arbitrary data.
 - **Only one submission can be in flight.** Every `useForm`/`action()` submission is a router visit, and a new visit aborts the previous one client-side; the server keeps running. React Router (fetchers), SolidStart (`useSubmissions`) and SvelteKit remote functions [exp] track many concurrent, keyed submissions.
 - **Revalidation is automatic but all-or-nothing.** The current page's loader always re-runs, even on validation failure. There is no targeted or opt-out revalidation (Next.js tags/paths, React Router `shouldRevalidate`, SvelteKit single-flight `refresh()`/`set()`, SolidStart `revalidate` keys), and deferred props keep stale values until the next navigation.
 - **Strong form state.** `useForm` errors come typed from the validator schema, flattened from Standard Schema issues, and cleared when a field is edited. It also has `hasChanges`, `wasSuccessful`/`recentlySuccessful`, `reset(fields | {initial})`, `resetOnSuccess`, and status-based routing of errors to the call site or an error boundary. `Form` adds `aria-busy`, an alert block and 429 retry gating. Only SvelteKit's [exp] remote `form` comes close.
 - **Optimistic UI** is React-only, through `useOptimistic` composed with `useForm` (integration-tested). Vue, Svelte and Solid have no helper, and `useNavigation()` does not expose the submitted data.
-- **Uploads and CSRF are partial.** Uploads switch the client to multipart automatically, but nothing validates them server-side (no schema, no size limit, no streaming parser). Page actions get an always-on same-origin check, with no allow-list and no coverage for `routes/` handlers.
+- **Uploads and CSRF are partial.** Uploads switch the client to multipart automatically, and `withValidator` can schema-check the rebuilt object, including `File` fields. Scalars stay strings (`'1'`/`'0'`, ISO dates), so coercion is the schema's job. There is no size limit and no streaming parser. Page actions get an always-on same-origin check, with no allow-list and no coverage for `routes/` handlers.
 
 ## Gap list for this area
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
 | Returning arbitrary data from an action to its caller | Next.js (return → `useActionState`), React Router (`actionData` / `fetcher.data`), TanStack Start (fn return), Nuxt (`$fetch` result), SvelteKit (`form` / `form.result`), SolidStart (`submission.result`), Astro (`{ data }`) | Table stakes (7) | Add a typed `result` field to the page object for mutation responses (ephemeral, like SvelteKit `form`), surfaced as `form.result` / `action()` → `{ ok, pageData, result }`. Keep the "void → refresh" default. Today a 2xx non-page `Response` triggers a full page load. An undocumented workaround is `c.set()` read back by the same-request loader. |
-| Progressive enhancement for `Form` | Next.js (server-action forms, queued pre-hydration), React Router (`<Form>`), SvelteKit (form actions; remote `form` [exp]), SolidStart (`<form action={action}>`), Astro (`action={actions.x}`); TanStack Start partial (`.url`) | Common (5) | The server already re-renders HTML for non-`X-VoidPages` POSTs. Needs: `Form` to render `method` + `action` URL with `?name`; urlencoded/multipart parsing into `withValidator`; a method override for PUT/PATCH/DELETE; seeding `useForm` `data` and `errors` from the server page object (Solid already reads `ErrorsContext`); a 4xx status for invalid submits; a PRG option. The React adapter must stop using a client function as the form action, or use one that degrades. |
-| Schema validation of urlencoded / multipart bodies, with coercion | Astro (`accept: 'form'`), SvelteKit remote `form` [exp], TanStack Start (validator receives `FormData`) | Common (3) | Prerequisite for the two rows above and for validated uploads. Must decode Void's own client encoding (`a[b]`, `name[]`, `'1'`/`'0'`, ISO dates; pages/navigation-engine.ts `objectToFormData`). |
+| Progressive enhancement for `Form` | Next.js (server-action forms, queued pre-hydration), React Router (`<Form>`), SvelteKit (form actions; remote `form` [exp]), SolidStart (`<form action={action}>`), Astro (`action={actions.x}`); TanStack Start partial (`.url`) | Common (5) | The server already re-renders HTML for non-`X-VoidPages` POSTs, and `withValidator` accepts urlencoded and multipart bodies. Needs: `Form` to render `method` + `action` URL with `?name`; a method override for PUT/PATCH/DELETE; seeding `useForm` `data` and `errors` from the server page object (Solid already reads `ErrorsContext`); a 4xx status for invalid submits; a PRG option. The React adapter must stop using a client function as the form action, or use one that degrades. |
 | Concurrent non-navigating submissions with tracked state | React Router (`useFetcher` + `key`, `useFetchers`), SolidStart (`useSubmissions`, `retry`), SvelteKit (remote `pending` counts, `form.for(id)`) [exp] | Common (3; Next.js actions are non-navigating but sequential) | Today every submission is a router visit and the next visit aborts it. Needs a separate request lane that doesn't commit history, an optional page-props refresh, and per-key state, in all 4 adapters. |
 | Targeted, partial or opt-out revalidation after a mutation | Next.js (`revalidateTag`/`revalidatePath`/`refresh`), React Router (`shouldRevalidate`, `defaultShouldRevalidate`), SvelteKit (single-flight `refresh()`/`set()`, `.updates()` + `requested()`), SolidStart (`revalidate` keys via `X-Revalidate`) | Common (4) | With one loader, the natural unit is "skip the loader" or "only these props" (Inertia `only`). Consider skipping the loader re-run on `ValidationError` (React Router skips revalidation on non-2xx). |
 | RPC server functions | Next.js, TanStack Start, SolidStart, Astro (stable); SvelteKit `command`/`query` [exp]; React Router RSC `"use server"` [exp] | Common (4 stable) | Void's typed `fetch` to `routes/` covers typing, but there is no client state or revalidation hook. If added, CSRF must cover it (TanStack Start auto-installs middleware for server fns). |
@@ -86,12 +85,11 @@
 | **Astro** | ✓ `<form method="POST" action={actions.x}>` on on-demand pages | POST (GET throws `ActionsUsedWithForGetError`) | Page re-renders; `Astro.getActionResult(actions.x)`; the result exists only in that POST response; PRG via `getActionContext()` middleware | native submit |
 
 **Behavioral differences that matter:**
-- Void's **server side is already progressive-enhancement capable.** A mutation without the `X-VoidPages` header re-renders full HTML. The gap is on the client: the form markup has no URL. On the server, `withValidator` only reads JSON, and validation errors are not shown as form state after a full-page response.
+- Void's **server side is already progressive-enhancement capable.** A mutation without the `X-VoidPages` header re-renders full HTML, and `withValidator` accepts the urlencoded or multipart body a browser would send. The gap is on the client: the form markup has no URL, so a no-JS submit never hits that parser. Validation errors are still not shown as form state after a full-page response.
 - Browsers send only GET and POST, so PUT, PATCH and DELETE actions (a Void strength) need a method-override convention (for example a hidden `_method` field) to work without JS. React Router simply documents that those methods lose progressive enhancement.
 
 **Void gap: missing.** Option-level work needed:
 - `Form` renders `method="post"` and `action="<url>?<name>"`.
-- Body parsing for `application/x-www-form-urlencoded` and `multipart/form-data` that feeds `withValidator`.
 - Method override.
 - Seeding `useForm` `data` and `errors` from the server-rendered page object (the server already ships `errors`).
 - A non-200 status for invalid submissions.
@@ -102,7 +100,7 @@
 
 | Framework | Encodings | Built-in schema validation | Form data → typed object | Field-error shape |
 |---|---|---|---|---|
-| **Void** | Client: **JSON**, or `multipart/form-data` when `data` contains a `File`, `Blob` or `FileList`. Multipart keys use brackets: `a[b]`, `files[]`, `items[0]`; booleans become `'1'`/`'0'`; Dates become ISO strings (pages/navigation-engine.ts `objectToFormData`). Server: `withValidator({ body, query, params })` with body = `c.req.json()` **only** (runtime/validator.ts); otherwise `c.req.parseBody()` (Hono) by hand | ✓ any Standard Schema (Zod, Valibot, ArkType; Drizzle-derived) | ✗: nothing decodes the client's own bracket and boolean encoding, and adding a file switches the payload to multipart, which a validated action rejects (400 `Invalid JSON body`) | `{ 'path.to.field': message }` (flattened issues); `ValidationError({ field: msg })` |
+| **Void** | Client: **JSON**, or `multipart/form-data` when `data` contains a `File`, `Blob` or `FileList`. Multipart keys use brackets: `a[b]`, `files[]`, `items[0]`; booleans become `'1'`/`'0'`; Dates become ISO strings (pages/navigation-engine.ts `objectToFormData`). Server: `withValidator` reads JSON, or rebuilds urlencoded and multipart bodies from those bracket keys (`runtime/handler/validator.ts`). | ✓ any Standard Schema (Zod, Valibot, ArkType; Drizzle-derived) | Partial. Objects, arrays and `File`s are rebuilt. Scalars stay strings, so booleans and dates are not coerced. | `{ 'path.to.field': message }` (flattened issues); `ValidationError({ field: msg })` |
 | **Next.js** | `FormData` (forms) or Flight-encoded args (RPC); `.bind()` for extra args | BYO (Zod/Valibot examples) | `Object.fromEntries(formData)` (includes `$ACTION_*` keys) | whatever you return |
 | **React Router** | urlencoded (default), multipart, `text/plain`; `application/json` via `useSubmit`/`fetcher.submit` `encType` | BYO | ✗ | `data({ errors }, { status: 400 })` |
 | **TanStack Start** | serializer types, or `FormData` (POST only) | `.validator(fn \| schema)` | ✗ (validator gets raw `FormData`) | thrown error |
@@ -111,9 +109,9 @@
 | **SolidStart** | `FormData` for multipart, else `URLSearchParams` (the reference page; other pages say `FormData`); server-fn args via Seroval (`FormData`, `Blob` and `File` passed raw) | BYO (Valibot example) | ✗ | whatever you return |
 | **Astro** | `accept: 'json'` (default) or `'form'` | ✓ Zod `input` (failure returns `BAD_REQUEST` before the handler runs) | ✓ with `accept: 'form'`: `number` → number, checkbox → boolean, `file` → `File`, repeated names → array, empty → `null` | `isInputError(e).fields[name]` |
 
-**Behavioral differences that matter:** Void's client chooses the encoding from the *data*, not from the form. The same validated action therefore works until a user picks a file, then fails with 400. Astro and SvelteKit [exp] make the form encoding a first-class validated input.
+**Behavioral differences that matter:** Void's client still chooses the encoding from the *data*, not from a form attribute. A validated action now accepts the multipart body a file upload produces. Scalars arrive as the client encoded them. Astro coerces numbers, checkboxes and empty fields; SvelteKit's remote `form` [exp] uses coercion prefixes.
 
-**Void gap: partial.** Schema validation is a strength for JSON. Missing: validation of urlencoded or multipart bodies, decoding that matches the client's bracket encoding, and coercion rules (3 peers: Astro, SvelteKit [exp], TanStack Start raw `FormData`). This is a prerequisite for progressive enhancement and for validated uploads.
+**Void gap: partial.** Schema validation covers JSON, urlencoded and multipart bodies, including the client's bracket encoding. Missing: built-in coercion of form scalars (Astro; SvelteKit remote `form` [exp]).
 
 ## Form component(s): props and options
 
@@ -232,7 +230,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 | Framework | API | Default status | Client handling | Notes |
 |---|---|---|---|---|
-| **Void** | `return c.redirect(url \| routeUrl(...), status?)` | 302, Hono's default (per Hono, not Void docs) | `fetch` follows the redirect; the destination page JSON is used as the GET result; a cross-origin target gets a full page load | `c.redirect()` sends the location unchanged and does not append the request query (`runtime/routing.ts`). A named action still drops its action key when the follow-up is a GET and keeps the page's other parameters. Config `routing.redirects` still merge the request query (the destination wins). No external-URL guard |
+| **Void** | `return c.redirect(url \| routeUrl(...), status?)` | 302, Hono's default (per Hono, not Void docs) | `fetch` follows the redirect; the destination page JSON is used as the GET result; a cross-origin target gets a full page load | `c.redirect()` sends the location unchanged and does not append the request query. An action redirect that omits a fragment keeps the page's fragment (`pages/redirect.ts`). A named action drops its action key when the follow-up is a GET and keeps the page's other parameters. Config `routing.redirects` still merge the request query (the destination wins). No external-URL guard |
 | **Next.js** | `redirect(path, type?)` (throws; call it outside `try`) | 303 without JS | In actions it defaults to `push`; the destination RSC is streamed in the same response | Revalidate before redirecting |
 | **React Router** | `redirect` / `replace` / `redirectDocument` (return or throw) | 302 | `replace` → `replaceState`; `redirectDocument` → full reload | Docs warn about open redirects |
 | **TanStack Start** | `throw redirect({ to \| href, params, search, statusCode, replace, resetScroll, … })` | — | handled by route lifecycles or `useServerFn`; a returned `Response` with `Location` is followed by the browser before the caller sees it | |
@@ -247,7 +245,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 | Framework | Client | Server parsing | Size limit | Streaming | Validation |
 |---|---|---|---|---|---|
-| **Void** | `useForm` / `action()`: automatic multipart when `data` holds a `File`, `Blob` or `FileList`. `useIslandForm` is JSON-only (no files) | `await c.req.parseBody()` (Hono; buffers the whole body) | **none** in the framework (platform limits only) | ✗ (`file.stream()` to R2 only after the buffered parse) | ✗ for schemas (`withValidator` is JSON-only); manual `instanceof File` + `ValidationError` (the docs show a type allow-list and server-chosen keys) |
+| **Void** | `useForm` / `action()`: automatic multipart when `data` holds a `File`, `Blob` or `FileList`. `useIslandForm` is JSON-only (no files) | `await c.req.parseBody()` (Hono; buffers the whole body). `withValidator` rebuilds that into the schema's object. | **none** in the framework (platform limits only) | ✗ (`file.stream()` to R2 only after the buffered parse) | A schema can require a `File`. There is no framework file-size or MIME helper; the docs still show `instanceof File` + `ValidationError`. |
 | **Next.js** | `FormData` | `formData()` | `serverActions.bodySizeLimit`, **1 MB** default (raw multipart) | ✗ | BYO; a string `<Form>` sends only the file name |
 | **React Router** | `encType="multipart/form-data"` | `@remix-run/form-data-parser` `parseFormData(request, uploadHandler)` | not documented | ✓ per-file upload handler | BYO |
 | **TanStack Start** | `FormData` to a POST server fn | validator gets `FormData`; server routes use `request.formData()` | not documented | ✗ | manual |
@@ -256,7 +254,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 | **SolidStart** | `enctype` multipart; `File`/`Blob` passed raw to server fns | `FormData` | not documented | ✗ | BYO |
 | **Astro** | `enctype` multipart | Actions `z.instanceof(File)` | `security.actionBodySizeLimit` **1 MB**; Node adapter `bodySizeLimit` 1 GB | ✗ | Zod |
 
-**Void gap: partial.** Missing: a configurable body-size limit (Next.js, SvelteKit, Astro); schema validation of file fields (SvelteKit [exp], Astro); file support in `useIslandForm`; streaming multipart. No framework documents upload progress.
+**Void gap: partial.** Missing: a configurable body-size limit (Next.js, SvelteKit, Astro); file support in `useIslandForm`; streaming multipart. A Standard Schema can validate a `File` field. No framework documents upload progress.
 
 ## CSRF and origin checks
 

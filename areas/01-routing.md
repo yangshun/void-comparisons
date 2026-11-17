@@ -1,6 +1,6 @@
 # 1. Routing
 
-**Versions:** Void 1.6.2 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.10.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · [N5] new or changed in Nuxt 5 · (unverified) not confirmed in docs or source
 
@@ -20,7 +20,7 @@
   - Navigation behavior: blocking that covers back/forward and programmatic navigation, history `state`, modal routes (intercept/mask/shallow), URL/search updates that skip the loader.
   - Prefetch: code-only prefetch.
   - Accessibility and view transitions: a route announcer with focus management, and view-transition types/direction.
-  - URL handling: a trailing-slash policy, hash/memory routing, programmatic route injection, route metadata, a search-param setter, and client URL rewriting.
+  - URL handling: hash/memory routing, programmatic route injection, route metadata, a search-param setter, and client URL rewriting. `routing.trailingSlash` chooses a slash policy and the static HTML layout.
 - **Differentiators Void lacks:** parallel routes, typed and validated search params (TanStack), lazy route discovery (React Router, SvelteKit), element-level scroll restoration (TanStack), and keep-alive of departed pages (Next.js [CC], Nuxt).
 - **Adapter differences inside Void:**
   - `preserveState` is honored only by Vue, which remounts the page on every GET navigation (query-only changes included) unless it is set, and by Solid, which re-creates the page on GET navigation and on param change.
@@ -51,7 +51,6 @@
 | Client route guards/middleware | Nuxt route middleware; TanStack `beforeLoad`; React Router `clientMiddleware`; SvelteKit universal `load` | Common (4) | Server middleware already runs per navigation except prefetch-cache and static-output hits; a client guard mainly matters for static output |
 | Route announcer + focus management | Next.js, SvelteKit, Astro built in; Nuxt opt-in component | Common (4) | Core + all adapters; accessibility |
 | View-transition types / direction | Next.js `transitionTypes`; TanStack `types`; Nuxt `types/toTypes/fromTypes`; Astro direction-aware animations | Common (4) | Pass `types` to `startViewTransition({ types })`; popstate direction |
-| Trailing-slash policy option | Next.js, TanStack, SvelteKit, Astro (Nuxt partial) | Common (4) | Today a fixed 301 for Pages only; interacts with base path, static output file layout and active-link matching |
 | Hash / memory routing | Nuxt `hashMode`; SvelteKit hash router; TanStack history types; Solid `HashRouter`/`MemoryRouter` | Common (4) | Needs Pages mode without a server (static JSON already exists) |
 | Static route metadata (handle/staticData/meta) | React Router `handle`; TanStack `staticData`; Nuxt page meta; Solid `info` | Common (4) | AST-extracted static export like `layout`; pairs with the introspection gap |
 | Custom restoration key | React Router `getKey`; TanStack `getScrollRestorationKey`; Nuxt `scrollBehavior` | Common (3) | `scroll-restoration.ts` keys per entry today |
@@ -436,7 +435,7 @@ Void's reload restoration and fragment-entry handling are on par with React Rout
 
 | Framework | Base path | Trailing slash | Case sensitivity | Client-side URL rewrite | Hash / memory history |
 |---|---|---|---|---|---|
-| **Void** | **None** (`RoutingConfig` has no base; Vite `base` only affects assets) | Fixed: strict matching; Pages apps 301 `/x/` → `/x` on the not-found fallback (GET/HEAD, after the asset lookup, not `/api/*`; `runtime/routing-pages.ts`); `routes/`-only apps get no redirect. No option | Case-sensitive (Hono; regex without `i`); not configurable | None. Server `routing.rewrites`/`fallbacks`/`c.rewrite()`; docs warn that client `Link` navigation may load data for the unrewritten path (`docs/guide/edge/rewrites.md`) | None (Pages need a server or static JSON) |
+| **Void** | **None** (`RoutingConfig` has no base; Vite `base` only affects assets) | `routing.trailingSlash` (`false` default). `true` canonicalizes Pages URLs to a trailing slash, redirects the other form, and prerenders `posts/index.html` instead of `posts.html`. API routes are unchanged. Generated route types follow the setting (`docs/reference/config.md`, `docs/guide/ssg.md`). No per-route override and no `preserve`/`ignore` mode. | Case-sensitive (Hono; regex without `i`); not configurable | None. Server `routing.rewrites`/`fallbacks`/`c.rewrite()`; docs warn that client `Link` navigation may load data for the unrewritten path (`docs/guide/edge/rewrites.md`) | None (Pages need a server or static JSON) |
 | **Next.js** | `basePath` (build time; prefixes Link/router/config rules) + `assetPrefix` | `trailingSlash` config + `skipTrailingSlashRedirect` | (unverified) | Config rewrites (server) | — |
 | **React Router** | `basename` | No policy option | `NavLink caseSensitive` only | — | Not in framework mode inventory |
 | **TanStack Start** | `basepath` (implemented as a rewrite) | `trailingSlash: 'always' \| 'never' \| 'preserve'` | `caseSensitive` (default false) | `rewrite: { input, output }`, `composeRewrites` (applies on the server too) | Browser/hash/memory/server history |
@@ -447,7 +446,6 @@ Void's reload restoration and fragment-entry handling are on par with React Rout
 
 **Void gap:** missing:
 - base path (7/7, table stakes);
-- a trailing-slash policy option (4/7; Nuxt partial);
 - client-side URL rewrite/reroute that the router honors for matching (3/7). This would also fix the documented rewrite/`Link` mismatch;
 - hash/memory routing (4/7);
 - a case-sensitivity option (2/7).
