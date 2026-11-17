@@ -18,9 +18,9 @@
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
+| Tailwind / preprocessor docs and scaffolding | All 7 document or scaffold Tailwind (Next.js default template, React Router templates, TanStack guide, Nuxt module, `sv add`, SolidStart template, `astro add`) | Table stakes (7) | Probably works through Vite already (unverified in Void). Mostly docs plus a `void init` option. Check dev CSS inlining of Tailwind output and the island shared stylesheet. |
 | Production critical/inlined CSS | Nuxt (`features.inlineStyles`), SvelteKit (`inlineStyleThreshold`), Astro (`build.inlineStylesheets: 'auto'` default); Next.js and TanStack experimental | Common (3 stable) | Small change in `runtime/routing/assets.ts` (inline files under a threshold). Interacts with CSP (Void already patches `style-src` in dev) and ISR cache size. |
 | CSS-in-JS SSR integration | Next.js (style registry + `useServerInsertedHTML`) | Differentiator (1) | React adapter: streaming via `renderToReadableStream` needs an inserted-HTML hook. Solid: emit `getAssets()` (also needed for `@solidjs/meta` `<Style>`). Vue and Svelte are mostly unaffected. |
-| Tailwind / preprocessor docs and scaffolding | All 7 document or scaffold Tailwind (Next.js default template, React Router templates, TanStack guide, Nuxt module, `sv add`, SolidStart template, `astro add`) | Table stakes (7) | Probably works through Vite already (unverified in Void). Mostly docs plus a `void init` option. Check dev CSS inlining of Tailwind output and the island shared stylesheet. |
 | Per-page CSS for island/Markdown pages | Astro (per-page + shared chunks for MPA pages) | Differentiator (1) | Today all island pages share one stylesheet (`islandStyleRoots`). |
 
 ## Where Void is ahead

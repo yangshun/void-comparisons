@@ -21,7 +21,9 @@
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
-| Deferred/Suspense content rendered as **HTML** in the stream (SEO, no-JS) | Next.js, React Router, TanStack, SolidStart (out-of-order boundary HTML); Astro (in-order async components); Nuxt [exp] | Table stakes (6; 5 stable) | React: stop cancelling at `__VOID_DEFERRED_SHELL_END__`; resolve deferred promises server-side so React streams `$RC` chunks, and keep data scripts for client state. Vue/Svelte/Solid need streaming renderers first (row below). ISR already stores full streams. Keep the status/head-before-first-byte guarantee |
+| Deferred/Suspense content rendered as **HTML** in the stream (SEO, no-JS) | Next.js, React Router, TanStack, SolidStart (out-of-order boundary HTML); Astro (in-order async components); Nuxt [exp] | Table stakes (6; 5 stable) | React: stop cancelling at `__VOID_DEFERRED_SHELL_END__`; resolve deferred promises server-side so React streams `$RC` chunks, and keep data scripts for client state. Vue/Svelte/Solid need the component-streaming row first. ISR already stores full streams. Keep the status/head-before-first-byte guarantee |
+| Configurable prerender concurrency / retries / filter | Concurrency: React Router, TanStack, Nuxt, SvelteKit, SolidStart, Astro. Retries: TanStack, Nitro. Filter/ignore: TanStack, Nuxt, SolidStart | Table stakes (6) for concurrency | Void is parallel (4) by default, so this is about control, not speed |
+| User-owned document shell in Pages mode | Next.js, React Router, TanStack, SvelteKit, SolidStart, Astro | Table stakes (6) | Void offers head + `htmlAttrs`/`bodyAttrs` only (Nuxt is similar). Custom SSR mode already gives full control |
 | Component streaming in Vue/Solid adapters | SolidStart (default `mode: "stream"`); Nuxt [exp] `renderToWebStream`. SvelteKit doesn't (Svelte parity) | Per-adapter partner: Solid behind a stable partner; Vue behind an experimental one | `solid-js/web` `renderToStream`, Vue `renderToWebStream`. Island pages would also need it |
 | Static shell with dynamic holes (PPR / server islands) | Next.js (PPR, default with CC); Astro (`server:defer`) | Differentiator (2) | Server islands fit Void's island wrapper + edge ISR. Needs an island endpoint, encrypted or signed props, per-island cache key, and cookie-bypass rules |
 | Server components | Next.js (stable); React Router, TanStack, Nuxt [exp] | Common (4; 1 stable) | React-only in practice. Conflicts with Void's Inertia-style JSON page protocol; large dependency (`@vitejs/plugin-rsc`) |
@@ -36,13 +38,11 @@
 | Children/slots passed into islands | Astro (slots), Nuxt (interactive parent slots), Next.js (RSC children) | Common (3) | Adapter islands already use devalue (`serializePageData`). Markdown's React and Vue emitters still `JSON.stringify` props (`packages/md/src/emit-react.ts`, `emit-vue.ts`). Slots need SSR-rendered HTML passed as static children per adapter (the Vue wrapper drops slots today) |
 | Prerender crawling | TanStack (`crawlLinks`), Nuxt, SvelteKit (`crawl`), SolidStart (Nitro `crawlLinks`) | Common (4) | Runner already fetches HTML; parse `<a href>` and enqueue |
 | Fail the build on prerender errors | Next.js (fails by default), TanStack/Nuxt/SolidStart (`failOnError`), SvelteKit (`handleHttpError: 'fail'` default) | Common (5) | Void always warns. Deploy-time prerender intentionally "never blocks deploy" (keep that default there) |
-| Configurable prerender concurrency / retries / filter | Concurrency: React Router, TanStack, Nuxt, SvelteKit, SolidStart, Astro. Retries: TanStack, Nitro. Filter/ignore: TanStack, Nuxt, SolidStart | Table stakes (6) for concurrency | Void is parallel (4) by default, so this is about control, not speed |
 | Hydration mismatch guidance/helpers | Next.js, React Router, TanStack, Nuxt | Common (4) | Docs + `ClientOnly`/`useHydrated` + React `onRecoverableError` passthrough |
 | Per-request render-mode decision | TanStack (`ssr` fn), SolidStart (`createHandler` options fn, inferred) | Differentiator (2) | Could hang off middleware (`c.set('ssr', false)`) |
 | Parent→child static-param chaining | Next.js (`generateStaticParams` receives parent params) | Differentiator (1) | Void has no layout companions to host it |
 | Stream timeout for deferred data | React Router (`streamTimeout`, 4950 ms default) | Differentiator (1) | Reject pending groups with `__rejectDeferred` after N ms |
 | Bot-aware buffering | Next.js (`htmlLimitedBots`), Nuxt (`botRegex`) | Differentiator (2) | Only useful once deferred HTML streams |
-| User-owned document shell in Pages mode | Next.js, React Router, TanStack, SvelteKit, SolidStart, Astro | Table stakes (6) | Void offers head + `htmlAttrs`/`bodyAttrs` only (Nuxt is similar). Custom SSR mode already gives full control |
 
 ## Where Void is ahead
 
