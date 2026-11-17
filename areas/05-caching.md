@@ -25,7 +25,7 @@
 - **No draft/preview mode.** Next.js (`draftMode()`) and Nuxt (`usePreviewMode()`) have one in core; SvelteKit and Astro have one through their Vercel adapters.
 - **Where Void is ahead:** deploy-time prerender seeds the cache, cache keys are deployment- and host-scoped, HTML and page-JSON are separate cached variants, `x-isr-cache` reports HIT/STALE/MISS, `revalidate()` works from cron and queue handlers, and the safety rules above.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -57,7 +57,9 @@
 - **Prefetch cache with a per-link SWR window** (`cacheFor: [fresh, expire]`), single-use mode (`0`), awaitable `router.prefetch`, and `flush`/`flushAll`. It is more expressive than SolidStart's fixed 5 s or Next.js's 30 s minimum.
 - **Observable.** `x-isr-cache: HIT|STALE|MISS` on responses (Astro has `X-Astro-Cache`; Next.js has none in the inventory).
 
-## HTML / page cache
+## Comparison
+
+### HTML / page cache
 
 | Framework | Where it lives | Runtimes | Cache key | Query / cookies / headers | What bypasses it | Variants | Status |
 |---|---|---|---|---|---|---|---|
@@ -82,7 +84,7 @@
 - No cookie allowlist ("ignore these cookies").
 - No request coalescing on misses: concurrent misses each render.
 
-## Time-based revalidation (TTL, SWR)
+### Time-based revalidation (TTL, SWR)
 
 | Framework | TTL sources (precedence) | Stale-while-revalidate semantics | Max staleness | First request / miss | Notes |
 |---|---|---|---|---|---|
@@ -106,7 +108,7 @@
 - No coalescing of concurrent background revalidations.
 - Doc/code mismatch on the expiry of prerendered entries.
 
-## On-demand invalidation
+### On-demand invalidation
 
 | Framework | By path | By tag | By key / other | Where callable | Propagation | Dev behavior |
 |---|---|---|---|---|---|---|
@@ -130,7 +132,7 @@
 - Self-hosted purge doesn't reach other colos.
 - No immediate-expiry vs SWR choice on invalidation (Next.js `updateTag` vs `revalidateTag(…,'max')`).
 
-## Data-level / function-level caching
+### Data-level / function-level caching
 
 | Framework | Cross-request server data cache | Request-scoped memoization | Lifetimes / profiles | Keys & tags | Status |
 |---|---|---|---|---|---|
@@ -152,7 +154,7 @@
 - No request-scoped memoization helper.
 - No lifetimes or tags at the data level.
 
-## Client navigation cache
+### Client navigation cache
 
 | Framework | What is cached | Freshness / retention defaults | Back / forward | Prefetch cache | Invalidation |
 |---|---|---|---|---|---|
@@ -174,7 +176,7 @@
 - No back/forward reuse without a prefetch.
 - No scoped client invalidation.
 
-## HTTP cache-header helpers
+### HTTP cache-header helpers
 
 | Framework | Config-level rules | Per route / response | Auto-generated | Conditional requests | Typed helper |
 |---|---|---|---|---|---|
@@ -192,7 +194,7 @@
 - No typed cache-control builder (Astro only).
 - No dev-time validation of `Cache-Control` (SvelteKit).
 
-## Draft / preview mode
+### Draft / preview mode
 
 | Framework | API | Mechanism | Effect on caches |
 |---|---|---|---|
@@ -205,7 +207,7 @@
 
 **Void gap:** missing. Common (4 incl. adapter-level; 2 in core). Void's cookie bypass already gives "skip ISR". What's missing is a signed enable/disable endpoint helper, an `isDraft(c)` check for loaders, and a way to make prerendered and static pages render live in draft. Prerendered pages without a `.server.ts` are served as static files without the Worker in hybrid deploys (`docs/guide/ssg.md`), so draft would need to route those through the Worker.
 
-## Cache providers / pluggability
+### Cache providers / pluggability
 
 | Framework | Pluggable? | Built-in backends | Multi-instance story |
 |---|---|---|---|

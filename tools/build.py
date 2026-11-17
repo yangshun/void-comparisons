@@ -319,24 +319,41 @@ views["overview"] = HERO + f'<article class="doc doc-overview">{overview}</artic
 def nav_item(slug, label, extra=""):
     return f'<li><a href="#{slug}" data-view="{slug}">{extra}<span>{html.escape(label)}</span></a></li>'
 
+# Area numbers stay on the links. Developer Experience pulls type safety out of
+# the server run and pairs it with dev tooling; build and deploy stays on its own.
+AREA_GROUPS = [
+    ("Pages", (1, 2, 3, 4)),
+    ("Server", (5, 6, 7)),
+    ("Content", (9, 10, 11, 12)),
+    ("Build", (13,)),
+    ("Developer Experience", (8, 14)),
+]
+by_num = {num: (slug, name) for num, slug, name, _ in nav_areas}
+
 nav = ['<p class="nav-group">Summary</p><ul>',
        nav_item("overview", "Overview"),
        nav_item("gaps", "Gap explorer"),
        nav_item("bugs", "Bugs found"),
        nav_item("quick-wins", "Quick wins"),
-       '</ul><p class="nav-group">Areas</p><ul>']
-for num, slug, name, counts in nav_areas:
-    nav.append(nav_item(slug, name))
-nav.append('</ul><p class="nav-group">Sources</p><ul>')
+       '</ul>']
+for label, nums in AREA_GROUPS:
+    nav.append(f'<p class="nav-group">{html.escape(label)}</p><ul>')
+    for num in nums:
+        slug, name = by_num[num]
+        nav.append(nav_item(slug, name, f'<span class="nav-num">{num}</span>'))
+    nav.append('</ul>')
+nav.append('<p class="nav-group">Sources</p><ul>')
 for slug, name in SOURCES:
     nav.append(nav_item(f"src-{slug}", name))
 nav.append("</ul>")
 
 options = ['<option value="overview">Overview</option>', '<option value="gaps">Gap explorer</option>',
-           '<option value="bugs">Bugs found</option>', '<option value="quick-wins">Quick wins</option>',
-           '<optgroup label="Areas">']
-options += [f'<option value="{slug}">{html.escape(name)}</option>' for num, slug, name, _ in nav_areas]
-options.append('</optgroup><optgroup label="Sources">')
+           '<option value="bugs">Bugs found</option>', '<option value="quick-wins">Quick wins</option>']
+for label, nums in AREA_GROUPS:
+    options.append(f'<optgroup label="{html.escape(label)}">')
+    options += [f'<option value="{by_num[num][0]}">{num}. {html.escape(by_num[num][1])}</option>' for num in nums]
+    options.append('</optgroup>')
+options.append('<optgroup label="Sources">')
 options += [f'<option value="src-{slug}">{html.escape(name)}</option>' for slug, name in SOURCES]
 options.append("</optgroup>")
 

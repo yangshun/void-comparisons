@@ -14,7 +14,7 @@
 - **Missing:** production critical-CSS inlining (Nuxt, SvelteKit and Astro have it stable), CSS-in-JS SSR hooks, and documentation for Tailwind and preprocessors.
 - **Island and Markdown pages share one production stylesheet**, so they don't get per-page CSS the way regular pages do.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -29,7 +29,9 @@
 - **Per-route CSS for regular pages with zero config** (entry + layout chain + page). Next.js keeps global CSS across navigations, and SolidStart v2 lets styles accumulate.
 - **CSS modules survive the islands build**, including Vue `<style module>` in island pages (explicitly handled).
 
-## CSS delivery: route splitting, ordering, removal, inlining, dev FOUC
+## Comparison
+
+### CSS delivery: route splitting, ordering, removal, inlining, dev FOUC
 
 | Framework | Per-route splitting | Order | Removal on client navigation | Production inlining / critical CSS | Dev FOUC |
 |---|---|---|---|---|---|
@@ -48,7 +50,7 @@
 
 **Void gap:** partial. Missing: production critical/inlined CSS (Nuxt and SvelteKit opt-in, Astro on by default; Next.js and TanStack experimental) and per-page CSS for island/Markdown pages.
 
-## CSS authoring: modules, preprocessors, Tailwind, scoped styles, CSS-in-JS
+### CSS authoring: modules, preprocessors, Tailwind, scoped styles, CSS-in-JS
 
 | Framework | CSS Modules | Preprocessors / PostCSS | Tailwind | Scoped styles | CSS-in-JS |
 |---|---|---|---|---|---|

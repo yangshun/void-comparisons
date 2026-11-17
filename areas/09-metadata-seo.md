@@ -17,7 +17,7 @@
 - **No canonical, hreflang or JSON-LD helpers and no absolute-URL base.** Canonical links and JSON-LD are written by hand. JSON-LD via `script.innerHTML` is emitted **unescaped**.
 - **Strengths:** a request-aware middleware head layer (unique); the same API across 4 UI libraries; Markdown frontmatter turns into `title`/`description` automatically; and `c.originalUrl()` gives canonical URLs under rewrites.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -46,7 +46,9 @@
 - **The client head diff preserves unchanged tags** (signature match) instead of re-creating them, and escapes attributes and title.
 - **`c.originalUrl()`** gives correct canonical URLs under internal rewrites (only TanStack's `location.publicHref` is comparable).
 
-## Where head can be declared, and when it runs
+## Comparison
+
+### Where head can be declared, and when it runs
 
 | Framework | Page | Layout / parent route | Any component | Global config | Request level (middleware) | Sync / async; where it runs |
 |---|---|---|---|---|---|---|
@@ -66,7 +68,7 @@
 
 **Void gap:** missing at layout level and at component level (React, Vue and Solid adapters). Partial on async (sync only, but it receives resolved loader props) and on middleware composition (single slot).
 
-## Merge, dedupe and title templates
+### Merge, dedupe and title templates
 
 | Framework | Title | `meta` dedupe | `link` / `script` | Title template | html/body attrs |
 |---|---|---|---|---|---|
@@ -83,7 +85,7 @@
 
 **Void gap:** partial. Missing: link/script dedupe or override keys (Nuxt `key`); per-layout title templates and a per-page opt-out (`absolute`, Next.js); a function template and template params (Nuxt). Middleware can set `titleTemplate`.
 
-## Supported tags and attributes
+### Supported tags and attributes
 
 | Framework | `meta` attributes | Other head tags | Tag position | Typed SEO keys / safety |
 |---|---|---|---|---|
@@ -96,7 +98,7 @@
 
 **Void gap:** partial. Missing: `meta` `http-equiv`, `media`, `itemprop` and arbitrary attributes (all six component- or element-based frameworks allow them; Next.js covers `theme-color` media via `viewport`); `style`, `noscript` and `base` tags; body-position scripts; typed OG/Twitter keys (Next.js, Nuxt); escaping of inline script content.
 
-## Client-navigation updates
+### Client-navigation updates
 
 | Framework | What is updated on client navigation |
 |---|---|
@@ -111,7 +113,7 @@
 
 **Void gap:** partial. Missing: client-side re-application of `htmlAttrs`, `bodyAttrs` and `script` (Nuxt reactive; React Router and TanStack through a React-rendered document). A destination with no title clears `document.title`.
 
-## Metadata from loaded data and streaming metadata
+### Metadata from loaded data and streaming metadata
 
 | Framework | Data access | Streaming behavior | Bot handling |
 |---|---|---|---|
@@ -126,7 +128,7 @@
 
 **Void gap:** none for SEO correctness. Void's blocking head is the safe default. Missing at option level: metadata that depends on deferred or streamed data, which Next.js has as a deliberate trade-off.
 
-## Sitemap, robots, web manifest, icons
+### Sitemap, robots, web manifest, icons
 
 | Framework | Sitemap | robots.txt | Web manifest | Icons / favicons |
 |---|---|---|---|---|
@@ -141,7 +143,7 @@
 
 **Void gap:** missing. Void has no generator for any of the four. A Void sitemap is easier to build than Astro's or TanStack's, because Void knows its page routes, ISR/prerender lists and Markdown index. Dynamic routes would still need a `getStaticPaths`-like enumeration (`routing.prerender` entries).
 
-## Open Graph / Twitter image generation
+### Open Graph / Twitter image generation
 
 | Framework | Mechanism |
 |---|---|
@@ -153,7 +155,7 @@
 
 **Void gap:** missing. Only Next.js ships this. Design constraint: Void's default runtime is Cloudflare Workers, where Satori + resvg-wasm fits only within Worker size limits (Next.js caps `ImageResponse` bundles at 500 KB for a similar reason). Prerendering at build time in Node avoids that.
 
-## Canonical, alternates (hreflang), JSON-LD
+### Canonical, alternates (hreflang), JSON-LD
 
 | Framework | Canonical | hreflang / alternates | Absolute URL base | JSON-LD |
 |---|---|---|---|---|
@@ -170,7 +172,7 @@ Extra: Next.js automatically marks 404s `noindex`.
 
 **Void gap:** partial. Missing: canonical/alternates helpers resolved against a configured site URL (Next.js, Astro); a safe JSON-LD helper (React Router); auto `noindex` on 404. Relative Open Graph and Twitter media URLs are resolved against the request; canonical links are not.
 
-## Viewport, theme-color, charset defaults
+### Viewport, theme-color, charset defaults
 
 | Framework | Defaults emitted | Viewport / theme API |
 |---|---|---|

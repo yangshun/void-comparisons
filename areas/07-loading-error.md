@@ -29,7 +29,7 @@
   - status and redirect decisions always happen before streaming starts, so there is no "late 404 → 200 + noindex" pitfall;
   - a dev 500 overlay with source frames and editor links.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -55,7 +55,9 @@
 - **`X-Void-No-Match: 1`** marks genuinely unmatched document requests, which helps hosts and monitoring tell "no route" from an app-level 404.
 - **One error-component convention across four UI libraries.** `_error` and `_not-found` take the same `{ status, message }` prop in React, Vue, Svelte and Solid. The nearest file wins, surrounding layouts stay, and a client navigation commits the page object instead of reloading.
 
-## Route-level loading UI
+## Comparison
+
+### Route-level loading UI
 
 | Framework | Convention | Default navigation behavior | Pending delay / min duration | Initial load / SSR | Notes |
 |---|---|---|---|---|---|
@@ -72,7 +74,7 @@
 
 **Void gap:** partial. Missing: a route-level pending component (Differentiator: Next.js, TanStack Start) and pending delay/min-duration (Differentiator: TanStack Start, Nuxt). Adapter impact: React could build this on transitions and Suspense; Vue, Svelte and Solid need a component the navigation engine shows while `state === 'loading'`.
 
-## Navigation pending state hooks
+### Navigation pending state hooks
 
 | Framework | Global navigation state | Per-link pending | Mutation pending | Built-in progress UI |
 |---|---|---|---|---|
@@ -87,7 +89,7 @@
 
 **Void gap:** partial. Missing: a built-in progress indicator (Differentiator: Nuxt). Link pending state is `data-void-pending` in all four adapters. The global hook is at parity, so Vue, Svelte and Solid users get the React Router-shaped API their single-library peers lack.
 
-## Section-level loading and error states (deferred/streamed data)
+### Section-level loading and error states (deferred/streamed data)
 
 | Framework | Mechanism | Pending | Error | Notes |
 |---|---|---|---|---|
@@ -102,7 +104,7 @@
 
 **Void gap:** none. Void is ahead: it has a uniform pending/error state object across Vue, Svelte and Solid, with production masking built in.
 
-## Error boundaries
+### Error boundaries
 
 | Framework | Per-route / segment convention | Component-level boundary | Root / global | What is caught | Server error during client navigation | Reset / retry |
 |---|---|---|---|---|---|---|
@@ -122,7 +124,7 @@
 
 **Void gap:** partial. The component convention, in-place client navigations and per-directory boundaries are in place. Missing: a reset that does not re-fetch (Common 4: Next.js, TanStack Start, Nuxt, SolidStart) and a payload beyond `status` and `message`.
 
-## Error page conventions and the data they receive
+### Error page conventions and the data they receive
 
 | Framework | File(s) | Props / data received | Inside layouts? | Production masking |
 |---|---|---|---|---|
@@ -141,7 +143,7 @@
 
 **Void gap:** partial. The app-rendered page is in place (Table stakes). The custom-`500.html` over-serving is a bug, recorded in [Bugs](bugs.md).
 
-## 404 / not-found handling
+### 404 / not-found handling
 
 | Framework | Unmatched URL | Not-found from data code | Per-segment 404 UI | Status fidelity | Extras |
 |---|---|---|---|---|---|
@@ -161,7 +163,7 @@
 
 **Void gap:** none for the rendered 404. Missing a throwable redirect (see the next section) and an automatic `noindex` on 404 (Differentiator: Next.js, area 9).
 
-## Helpers and where they can be called
+### Helpers and where they can be called
 
 | Framework | Redirect | Not found | Generic / typed HTTP error | Auth-specific | Throw or return | Callable from |
 |---|---|---|---|---|---|---|
@@ -181,7 +183,7 @@
 
 **Void gap:** partial. Missing: a throwable redirect (Common, 5: Next.js, React Router, TanStack Start, SvelteKit, SolidStart). `forbidden`/`unauthorized` UI is a Differentiator (1, experimental). The not-found and error-page-object pieces of the old design note have shipped.
 
-## Status codes and headers from pages
+### Status codes and headers from pages
 
 | Framework | Status while still rendering the page | Response headers from page / loader | Streaming constraint |
 |---|---|---|---|
@@ -196,7 +198,7 @@
 
 **Void gap:** none. `c.status()` renders the page at that status, and `HTTPException` renders `_error` or `_not-found` at its status. Non-200 pages stay out of the ISR cache.
 
-## Expected vs unexpected errors
+### Expected vs unexpected errors
 
 | Framework | Expected-error mechanism | Unexpected errors | Production masking | What reaches the client |
 |---|---|---|---|---|
@@ -213,7 +215,7 @@
 
 **Void gap:** partial. Missing: an error-transform hook (Differentiator: SvelteKit, SolidStart) and custom fields on the error prop.
 
-## Error reporting hooks
+### Error reporting hooks
 
 | Framework | Server hook | Client hook | Notes |
 |---|---|---|---|

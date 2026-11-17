@@ -13,7 +13,7 @@
 - **Fonts:** Next.js, Astro and Nuxt self-host fonts, subset them, compute metric-adjusted fallbacks and preload them. Void has nothing in this area.
 - **Third-party scripts:** only Next.js (`next/script` strategies) and Nuxt (`@nuxt/scripts` triggers and facades) have a loading-strategy API; Astro offers Partytown worker offloading. Void has `head.script` entries, which are SSR-only and not re-applied on client navigation.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -25,7 +25,9 @@
 | Third-party script loading strategies | Next.js (`next/script` `afterInteractive`/`lazyOnload`/`beforeInteractive`), Nuxt (`@nuxt/scripts` triggers, proxies) | Differentiator (2) | The client runtime is shared across adapters, so one implementation serves all 4. Head scripts also need client-nav support (see area 9). |
 | Worker offloading (Partytown) | Astro (`@astrojs/partytown`); Next.js `worker` is experimental and Pages Router only | Differentiator (1) | — |
 
-## Image optimization: availability and pipeline
+## Comparison
+
+### Image optimization: availability and pipeline
 
 | Framework | Shipped as | When transforms happen | Local / remote sources | Remote allowlist and safety | Providers / custom loaders | Output formats |
 |---|---|---|---|---|---|---|
@@ -38,7 +40,7 @@
 | TanStack Start | None ("does not automatically provide the Next.js image optimizer"; Unpic + an image service suggested) | — | — | — | — | — |
 | SolidStart | None (Vite assets, `public/`) | — | — | — | — | — |
 
-## Image component props (frameworks that have one)
+### Image component props (frameworks that have one)
 
 Void, React Router, TanStack Start and SolidStart have no image component and are omitted from this table.
 
@@ -62,7 +64,7 @@ Void, React Router, TanStack Start and SolidStart have no image component and ar
 
 **Void gap:** missing entirely: component, responsive srcset, format conversion, quality, placeholder, priority, layout modes, remote allowlist, build/runtime pipeline and providers.
 
-## Font optimization
+### Font optimization
 
 | Framework | Mechanism | Self-host / providers | Subsetting / variants | Fallback metrics (CLS) | Preload | Notes |
 |---|---|---|---|---|---|---|
@@ -75,7 +77,7 @@ Void, React Router, TanStack Start and SolidStart have no image component and ar
 
 **Void gap:** missing: self-hosting from providers, subsetting, metric-adjusted fallbacks and per-route preload. A config-driven design like Astro's fits Void's config `head` and per-route CSS collection, and is independent of the UI library.
 
-## Third-party script loading
+### Third-party script loading
 
 | Framework | Declaration points | Loading strategies | Worker offload | Consent / facades | CSP nonce | Client-nav behavior |
 |---|---|---|---|---|---|---|

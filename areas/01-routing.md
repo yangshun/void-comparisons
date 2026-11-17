@@ -28,7 +28,7 @@
   - `resolveOn` exists only in React.
   - All four adapters stream deferred props over NDJSON during client navigation. SSR streaming is React-only (Area 2).
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -85,7 +85,9 @@
 - **React `resolveOn: 'data' | 'commit'`** gives explicit control over when an awaited navigation resolves inside Actions/transitions. No competitor documents an equivalent.
 - **Static output keeps SPA navigation** through prebuilt `/_void/pages/*.json` page objects (fast path when no redirects/rewrites/fallbacks exist).
 
-## Route definition model, file conventions and route manifests
+## Comparison
+
+### Route definition model, file conventions and route manifests
 
 | Framework | Definition model | Route files and special files | Ignore / colocation | Programmatic routes / manifest tooling |
 |---|---|---|---|---|
@@ -105,7 +107,7 @@
 
 **Void gap:** partial. Missing: a programmatic route definition or injection API for plugins (5/7 have one), a route-tree inspection CLI, and configurable ignore/route tokens (TanStack, Nuxt).
 
-## Route matching and ranking
+### Route matching and ranking
 
 | Framework | Ranking rules | Conflict handling |
 |---|---|---|
@@ -124,7 +126,7 @@
 
 **Void gap:** partial. Missing: detection of partially overlapping dynamic pages (SvelteKit-style `route_conflict`).
 
-## Nested layouts (state persistence, opt-out/reset, named layouts, layout data)
+### Nested layouts (state persistence, opt-out/reset, named layouts, layout data)
 
 | Framework | Layout mechanism | Persists across navigation | Layout data | Opt-out / reset / escape | Named / selectable layouts | Remount control |
 |---|---|---|---|---|---|---|
@@ -149,7 +151,7 @@
 - a remount-key hook that behaves the same across adapters (Next.js `template`, TanStack `remountDeps`, Nuxt `key`: 3/7);
 - keep-alive (2/7).
 
-## Dynamic, optional and catch-all segments; param matchers
+### Dynamic, optional and catch-all segments; param matchers
 
 | Framework | Dynamic | Optional segment | Catch-all (zero segments? value type) | Optional catch-all | Partial-segment params | Param matching / validation | Escaping special chars |
 |---|---|---|---|---|---|---|---|
@@ -176,7 +178,7 @@
 
 Design note: optional segments double the route patterns that the eager client manifest and `routeUrl` types carry. Matchers must run identically in the client regex matcher (`pages/manifest.ts`) and in Hono.
 
-## Route groups and pathless layouts
+### Route groups and pathless layouts
 
 | Framework | Groups | Pathless layout | Extras |
 |---|---|---|---|
@@ -191,7 +193,7 @@ Design note: optional segments double the route patterns that the eager client m
 
 **Void gap:** none functionally (6/7 have groups; Void matches). Documenting group layouts and exposing group membership (Nuxt `meta.groups`) would close the remaining distance.
 
-## Parallel routes, intercepting/modal routes, URL masking and shallow routing
+### Parallel routes, intercepting/modal routes, URL masking and shallow routing
 
 | Framework | Parallel / named outlets | Intercepting / modal | URL masking | Shallow routing (URL/history without navigation) |
 |---|---|---|---|---|
@@ -213,7 +215,7 @@ Design note: optional segments double the route patterns that the eager client m
 
 Design note: Void's server-driven model (one page object per URL) fits SvelteKit's shallow routing best: `router.prefetch()` already returns the target page object, so `visit(url, { shallow: true, state })` plus a typed `page.state` is a small extension. Masking would also need SSR to ignore the mask.
 
-## Link component
+### Link component
 
 Normalized by capability. Cells give each framework's mechanism; "—" means not available.
 
@@ -256,7 +258,7 @@ Void click handling (`pages/link.ts`, `pages/adapter-helpers.ts`): modified clic
 - relative links under `typedRoutes` (3/7);
 - `mask` (2/7).
 
-## Programmatic navigation
+### Programmatic navigation
 
 | Framework | API | Options | Completion / return | Abort and race behavior | Server use |
 |---|---|---|---|---|---|
@@ -281,7 +283,7 @@ Void click handling (`pages/link.ts`, `pages/adapter-helpers.ts`): modified clic
 - a non-subscribing `matchRoute(dest)` (TanStack);
 - a history-entry / visited-page cache for back/forward (latent internal option).
 
-## Navigation blocking, client guards and lifecycle events
+### Navigation blocking, client guards and lifecycle events
 
 | Framework | Confirm-leave / blocking | Covers back/forward and programmatic? | Tab close (`beforeunload`) | Client-side route guards / middleware | Lifecycle events / hooks | Pending state |
 |---|---|---|---|---|---|---|
@@ -307,7 +309,7 @@ Void click handling (`pages/link.ts`, `pages/adapter-helpers.ts`): modified clic
 
 Design note: the hooks must exist in all four adapters. A framework-agnostic event API on the core router (`router.on('before'|'after', fn)`) plus adapter wrappers fits the existing `void/pages-client` layering.
 
-## Prefetching
+### Prefetching
 
 | Framework | Triggers (default) | Delay | What is fetched | Cache / TTL | Manual API | Skips / conditions |
 |---|---|---|---|---|---|---|
@@ -332,7 +334,7 @@ Design note: the hooks must exist in all four adapters. A framework-agnostic eve
 - targeted invalidation of prefetched entries on mutation;
 - Speculation Rules (2/7, both [exp]).
 
-## Search params
+### Search params
 
 | Framework | Read | Write | Typed / validated | Serialization | Loader re-run semantics |
 |---|---|---|---|---|---|
@@ -355,7 +357,7 @@ Design note: the hooks must exist in all four adapters. A framework-agnostic eve
 - route-scoped typed and validated search params flowing to links and `useRouter().query` (TanStack only, 1/7);
 - retain/strip middleware (TanStack).
 
-## Typed links and route params (summary; detail in Area 8)
+### Typed links and route params (summary; detail in Area 8)
 
 | Framework | Typed hrefs | Typed params in components | Mechanism |
 |---|---|---|---|
@@ -370,7 +372,7 @@ Design note: the hooks must exist in all four adapters. A framework-agnostic eve
 
 **Void gap:** partial. Missing: param types inferred from the component file (React Router, TanStack, SvelteKit: 3/7), and a loader `c.req.param()` that does not need a cast. `useParams<'/users/:id'>()` already types the names when the pattern is passed. Void's string-level `href` checking under `typedRoutes` is on par with Next.js and Nuxt and ahead of React Router, SvelteKit, Solid and Astro.
 
-## Scroll restoration, focus management and route announcements
+### Scroll restoration, focus management and route announcements
 
 | Framework | New navigation | Back/forward | Reload | Hash | Opt-out | Custom key / containers | Focus & announcements |
 |---|---|---|---|---|---|---|---|
@@ -391,7 +393,7 @@ Design note: the hooks must exist in all four adapters. A framework-agnostic eve
 
 Void's reload restoration and fragment-entry handling are on par with React Router and TanStack.
 
-## View transitions
+### View transitions
 
 | Framework | Enable | Per-navigation override | Types / direction | Reduced motion | Back/forward | Notes |
 |---|---|---|---|---|---|---|
@@ -414,7 +416,7 @@ Void's reload restoration and fragment-entry handling are on par with React Rout
 - element persistence across navigation (Astro);
 - documented React `<ViewTransition>` interop.
 
-## Route-level code splitting and route discovery
+### Route-level code splitting and route discovery
 
 | Framework | Splitting | Client route manifest / discovery | Notes |
 |---|---|---|---|
@@ -431,7 +433,7 @@ Void's reload restoration and fragment-entry handling are on par with React Rout
 - lazy route discovery or server-side route resolution (2/7). This matters because Void's manifest grows linearly with page count and regex matching is linear in dynamic routes.
 - a single-bundle option for Capacitor/HTTP/1 targets (SvelteKit). Void already supports `capacitor:` URLs.
 
-## Base path, trailing slash, case sensitivity, URL rewriting and history modes
+### Base path, trailing slash, case sensitivity, URL rewriting and history modes
 
 | Framework | Base path | Trailing slash | Case sensitivity | Client-side URL rewrite | Hash / memory history |
 |---|---|---|---|---|---|
@@ -452,7 +454,7 @@ Void's reload restoration and fragment-entry handling are on par with React Rout
 
 Design note: a base path touches `Link` href rendering and active matching, `routeUrl`/typed routes, the prefetch and static JSON paths (`/_void/pages/…`), Hono route registration, redirects/rewrites config and `_redirects` output.
 
-## Route metadata and current-route introspection
+### Route metadata and current-route introspection
 
 | Framework | Static per-route metadata | Current route identity / matches |
 |---|---|---|

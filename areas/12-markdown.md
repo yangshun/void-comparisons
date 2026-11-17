@@ -10,7 +10,7 @@
 
 - **Markdown is a Void strength.** Markdown pages work in all 4 adapters, with Shiki dual-theme highlighting, containers, a TOC, a `@void/md/pages` index and auto-prerendering. The gap is MDX-style server-rendered components (Markdown components must be hydrated islands) and the lack of a plugin hook.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -22,7 +22,9 @@
 
 - **Built-in Markdown pages in 4 UI libraries:** Shiki dual-theme highlighting, line/diff/focus notation, line numbers, containers, GitHub alerts, footnotes, task-list checkboxes, `[[toc]]`, heading anchors, code-copy (with a `copyLabel`), frontmatter → head, named layouts, islands, companion loaders, auto-prerender, a `@void/md/pages` index and a ready theme. Anchors and the copy button follow `dir="rtl"`. Only Astro is comparable, and only for its own `.astro` + islands model.
 
-## Markdown / MDX as pages
+## Comparison
+
+### Markdown / MDX as pages
 
 | Framework | Format and engine | Files become pages? | Components inside Markdown | Frontmatter | Layouts | Syntax highlighting | Plugin hook | Content index / collections |
 |---|---|---|---|---|---|---|---|---|

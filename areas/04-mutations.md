@@ -19,7 +19,7 @@
 - **Optimistic UI** is React-only, through `useOptimistic` composed with `useForm` (integration-tested). Vue, Svelte and Solid have no helper, and `useNavigation()` does not expose the submitted data.
 - **Uploads and CSRF are partial.** Uploads switch the client to multipart automatically, and `withValidator` can schema-check the rebuilt object, including `File` fields. Scalars stay strings (`'1'`/`'0'`, ISO dates), so coercion is the schema's job. There is no size limit and no streaming parser. Page actions get an always-on same-origin check, with no allow-list and no coverage for `routes/` handlers.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -51,7 +51,9 @@
 - **`Link method="post" data={…}`** for one-click mutations, plus the `action()` helper with `{ ok, pageData } | { ok: false, error }`.
 - **One mutation API across React, Vue, Svelte and Solid.** React additionally integrates with `useActionState`, `useFormStatus` and `useOptimistic`.
 
-## Action and server-function model
+## Comparison
+
+### Action and server-function model
 
 | Framework | Primitive | Addressed by | HTTP methods | Several per page | Callable from code (RPC) |
 |---|---|---|---|---|---|
@@ -71,7 +73,7 @@
 
 **Void gap: partial.** Page actions are complete. Missing: RPC-style server functions, which 4 peers have stable (Next.js, TanStack Start, SolidStart, Astro), plus SvelteKit [exp] and React Router RSC [exp].
 
-## Progressive enhancement
+### Progressive enhancement
 
 | Framework | Works without JS? | Methods without JS | What the server returns to a no-JS POST | Before hydration |
 |---|---|---|---|---|
@@ -96,7 +98,7 @@
 - A POST/redirect/GET (PRG) story.
 - React: a URL action (or a server-function action) instead of a client function.
 
-## Input parsing and validation
+### Input parsing and validation
 
 | Framework | Encodings | Built-in schema validation | Form data → typed object | Field-error shape |
 |---|---|---|---|---|
@@ -113,7 +115,7 @@
 
 **Void gap: partial.** Schema validation covers JSON, urlencoded and multipart bodies, including the client's bracket encoding. Missing: built-in coercion of form scalars (Astro; SvelteKit remote `form` [exp]).
 
-## Form component(s): props and options
+### Form component(s): props and options
 
 Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Router `<Form>` | SvelteKit native `<form>` + `use:enhance` / remote `form` | SolidStart native `<form action>` | Astro native `<form>` + ClientRouter. TanStack Start and Nuxt have **no form component** and are omitted.
 
@@ -141,7 +143,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: partial.** Missing: GET/search forms with client-side navigation (Next.js, React Router, SvelteKit, Astro); non-navigating mode; a `replace`/`state` option for React; full-document opt-out; revalidation control.
 
-## Non-navigating and concurrent submissions
+### Non-navigating and concurrent submissions
 
 | Framework | Non-navigating API | Concurrency | Keyed or shared state | Cancellation | Revalidation |
 |---|---|---|---|---|---|
@@ -156,7 +158,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: missing.** Void has no fetcher-style API: no concurrent, keyed, non-committing submissions that also revalidate, and no global list of in-flight submissions. Because a later navigation silently aborts a pending submission's client-side result, a "like" button followed by a link click loses its error state.
 
-## Pending and progress state
+### Pending and progress state
 
 | Framework | Per-form pending | Global pending | Submitted data visible while pending | Upload progress |
 |---|---|---|---|---|
@@ -171,7 +173,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: partial.** The per-form state is strong. Missing: submitted data in the global navigation state (React Router, Next.js `useFormStatus`, SolidStart `input`), which other components need for optimistic or pending UI. No framework documents upload progress.
 
-## Validation errors and returned data
+### Validation errors and returned data
 
 | Framework | Expected-error channel | Status of an invalid submission | Arbitrary data returned on success | Lifetime |
 |---|---|---|---|---|
@@ -191,7 +193,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: missing** for returned data (7/7 peers have it). Void's error-side handling is better than most peers.
 
-## Optimistic UI
+### Optimistic UI
 
 | Framework | Mechanism | Rollback | Across components |
 |---|---|---|---|
@@ -206,7 +208,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: partial.** React relies on the library. Missing: framework-level optimistic primitives for Vue, Svelte and Solid, and exposure of in-flight submission input (React Router, SolidStart stable; SvelteKit [exp]).
 
-## Revalidation after a mutation
+### Revalidation after a mutation
 
 | Framework | Default after success | Round trips | Targeting | Opt-out | After a failed submission |
 |---|---|---|---|---|---|
@@ -226,7 +228,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: partial.** Missing: targeted or partial refresh and opt-out (Next.js, React Router, SvelteKit, SolidStart); re-resolving deferred props; skipping the loader re-run on validation failure (React Router skips revalidation on non-2xx). Server HTML-cache purge exists (`revalidate({ paths })` from `void/isr`, area 5).
 
-## Redirects after a mutation
+### Redirects after a mutation
 
 | Framework | API | Default status | Client handling | Notes |
 |---|---|---|---|---|
@@ -241,7 +243,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: none** at the capability level. Option-level: no `replace` vs `push` choice for redirects (React Router `replace()`, TanStack Start `replace`), no "full document" redirect (React Router `redirectDocument`), and no open-redirect guard (SvelteKit v3).
 
-## File uploads
+### File uploads
 
 | Framework | Client | Server parsing | Size limit | Streaming | Validation |
 |---|---|---|---|---|---|
@@ -256,7 +258,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: partial.** Missing: a configurable body-size limit (Next.js, SvelteKit, Astro); file support in `useIslandForm`; streaming multipart. A Standard Schema can validate a `File` field. No framework documents upload progress.
 
-## CSRF and origin checks
+### CSRF and origin checks
 
 | Framework | Built in | Check | Requests with no origin headers | Scope | Allow-list |
 |---|---|---|---|---|---|
@@ -273,7 +275,7 @@ Columns run left to right: Void `Form`/`useForm` | Next.js `<Form>` | React Rout
 
 **Void gap: partial.** Missing: a trusted-origins allow-list for page actions (4 peers) and opt-in protection for `routes/` handlers.
 
-## Error handling and status codes
+### Error handling and status codes
 
 | Framework | Expected vs unexpected | Where unexpected errors go | Notes |
 |---|---|---|---|

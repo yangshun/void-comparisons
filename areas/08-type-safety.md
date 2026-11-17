@@ -16,7 +16,7 @@
 - **Gap: client search params are untyped.** Only TanStack has typed and validated search params, so this is a differentiator rather than table stakes. Void already validates `query` on the server.
 - **Middleware context is typed by one global augmentation (`CloudContextVariables`).** This is the same model as SvelteKit, SolidStart and Astro. Its index signature makes unknown keys `unknown` rather than an error. TanStack infers context down the middleware chain, and React Router uses typed keys.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -40,7 +40,9 @@
 - **Typed, validated env with a build-time guard against server keys in client code** and validation before deploy and at boot. Matched only by SvelteKit 3 and Astro.
 - **The same type surface across React, Vue, Svelte and Solid.** Every other framework is single-library, or (Astro) leaves island typing to each library.
 
-## Typed route paths and links
+## Comparison
+
+### Typed route paths and links
 
 | Framework | Mechanism | Surfaces checked | Relative paths | Escape hatch / limits | Notes |
 |---|---|---|---|---|---|
@@ -61,7 +63,7 @@
 
 **Void gap:** none for the core capability. Partial at option level: no typed relative paths (TanStack only), and no typed `search` per destination (`routeUrl`'s `query` is a generic `RouteQuery`).
 
-## Typed route params (inferred from the file path vs manual)
+### Typed route params (inferred from the file path vs manual)
 
 | Framework | In components | In loaders / handlers | Inferred from file path? | Value types / transforms |
 |---|---|---|---|---|
@@ -80,7 +82,7 @@
 
 **Void gap:** partial. Component params are typed when the page pattern is passed. Missing: inference from the component file (React Router, TanStack, SvelteKit) and a path-generic `c.req.param()` that does not need a cast. Also missing: a typed transform or matcher for params (SvelteKit, TanStack).
 
-## Typed search params
+### Typed search params
 
 | Framework | Read API and type | Validation / coercion | Defaults; input vs output types | Inheritance / middleware | Server side |
 |---|---|---|---|---|---|
@@ -99,7 +101,7 @@
 
 **Void gap:** partial. Missing: client-side typed and validated search params (a route-level schema reused by `useRouter()`, `Link data` and `routeUrl` `query`), input/output (default) typing, and inheritance. Only TanStack has these.
 
-## Loader / server data → component typing
+### Loader / server data → component typing
 
 | Framework | How the component gets the type | Annotation needed | Do types reflect serialization? | Parent / layout data | Deferred / streamed |
 |---|---|---|---|---|---|
@@ -118,7 +120,7 @@
 
 **Void gap:** partial. Missing: (1) zero-ceremony typing, i.e. a generated sibling type or language-tool injection instead of export/import/annotate; (2) typed layout data, which depends on layout loaders (area 3). Serialization-aware page props shipped with devalue.
 
-## Typed server calls (RPC / server functions / typed fetch)
+### Typed server calls (RPC / server functions / typed fetch)
 
 | Framework | Mechanism | Input typing and runtime validation | Output typing | Errors | Forms / notes |
 |---|---|---|---|---|---|
@@ -139,7 +141,7 @@
 
 **Void gap:** partial. Missing: typed error payloads per route; typing for external APIs or augmented routes; typed `headers`; import-and-call RPC (cross-area; see areas 4 and 6).
 
-## Typed request / middleware context
+### Typed request / middleware context
 
 | Framework | Mechanism | Per-chain narrowing | Unknown key | Built-ins typed |
 |---|---|---|---|---|
@@ -156,7 +158,7 @@
 
 **Void gap:** partial. Missing: per-chain inference (TanStack) and typed keys that fail when unset (React Router). Optional: dropping the index signature so typos become errors.
 
-## Typed environment variables
+### Typed environment variables
 
 | Framework | Declaration | Typed access | Validation (when) | Client/server split |
 |---|---|---|---|---|
@@ -171,7 +173,7 @@
 
 **Void gap:** none. Void is at parity with SvelteKit 3 and Astro, and ahead of the rest on validation at deploy and boot. Missing at option level: a `static`/inline flag for dead-code elimination (SvelteKit) and per-key descriptions on hover (SvelteKit).
 
-## Codegen vs pure inference (artifacts, triggers, CLI, editor)
+### Codegen vs pure inference (artifacts, triggers, CLI, editor)
 
 | Framework | Model | Artifacts | Regenerated when | CLI | Editor / build type-check |
 |---|---|---|---|---|---|

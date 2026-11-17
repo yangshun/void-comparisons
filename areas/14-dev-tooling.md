@@ -23,7 +23,7 @@
 - **Type generation is on par** (`void prepare`, automatic in dev/build); there is no `typecheck` wrapper (Nuxt, SvelteKit, Astro have one).
 - **Observability is platform-shaped.** It consists of a structured JSON logger (`void/log`) plus `void project logs/requests`. There are no framework hooks, so third-party APM/Sentry integrations have nowhere to attach (Next.js, React Router, SvelteKit, Nuxt all have one).
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -57,7 +57,9 @@
 - **Structured logging aligned with first-party log tooling.** One JSON line per call with `child()` field binding, filterable by message and fields in `void project logs`.
 - **Server error overlay with the `cause` chain** (undocumented). Nuxt also shows causes; Next.js shows more overall.
 
-## Dev server and HMR
+## Comparison
+
+### Dev server and HMR
 
 | Framework | Command / engine | Client HMR | Server-code edits | Runtime fidelity in dev | Notable options |
 |---|---|---|---|---|---|
@@ -81,7 +83,7 @@
 - No background/lock-file dev mode for agents (Differentiator: Astro, Next.js).
 - The inspector port is undocumented.
 
-## Error overlay
+### Error overlay
 
 | Framework | Server errors | Client runtime errors | Build/compile errors | Editor links | Extras |
 |---|---|---|---|---|---|
@@ -102,7 +104,7 @@
 - No agent-oriented "copy prompt" and no browser↔terminal log bridge.
 - Undocumented.
 
-## Devtools (in-browser panels, route inspection, cache inspection)
+### Devtools (in-browser panels, route inspection, cache inspection)
 
 | Framework | In-browser panel | Route inspection | Cache / data inspection | Other |
 |---|---|---|---|---|
@@ -123,7 +125,7 @@
 - Must work across 4 UI libraries, so a framework-agnostic overlay (Astro-style web components) fits better than per-library devtools.
 - Candidate data: the page object (`component`, `props`, `shared`, `deferred*`), the route match, `X-Void-Routing`, `x-isr-cache`, bindings and dev triggers.
 
-## Type generation and type-check commands
+### Type generation and type-check commands
 
 | Framework | Generate | Automatic | Type-check command |
 |---|---|---|---|
@@ -138,7 +140,7 @@
 
 **Void gap:** none for generation. Minor: no `void check`/typecheck wrapper (Common: Nuxt, SvelteKit, Astro). This matters more for Void because Vue/Svelte SFCs need different checkers.
 
-## Scaffolding and generators
+### Scaffolding and generators
 
 | Framework | Create CLI options | Add-on / integration installer | In-project generators | Upgrade / migration |
 |---|---|---|---|---|
@@ -161,7 +163,7 @@
 - Example/template flag (Common: Next.js `--example`, React Router `--template`, Astro `--template`, SolidStart, TanStack).
 - Code-upgrade codemods (Common: Next.js, Nuxt, SvelteKit).
 
-## AI-agent support
+### AI-agent support
 
 | Framework | Bundled version-pinned docs | `AGENTS.md` management | Skills | MCP | `llms.txt` | Agent-aware CLI / dev server |
 |---|---|---|---|---|---|---|
@@ -184,7 +186,7 @@
 - Agent-aware dev server (background mode, lock file, JSON logs; Differentiator: Astro, Next.js).
 - AGENTS.md is updated only at `void init`. Next.js re-syncs on every `next dev`, so Void's version-specific text can go stale after an upgrade.
 
-## Instrumentation / OpenTelemetry
+### Instrumentation / OpenTelemetry
 
 | Framework | Startup hook | Spans emitted automatically | Hook API | Client side | Config |
 |---|---|---|---|---|---|
@@ -205,7 +207,7 @@
 - Should be target-agnostic: Cloudflare has its own Workers tracing (not wired; not found), while Node can use the OTel SDK.
 - Client navigation hooks (Next.js `onRouterTransitionStart`, React Router `router.instrument`) would sit in the shared `navigation-engine.ts`, so they would cover all 4 adapters at once.
 
-## Server (and client) error reporting hooks
+### Server (and client) error reporting hooks
 
 | Framework | Server hook | Payload / context | Client hook |
 |---|---|---|---|
@@ -226,7 +228,7 @@ Design notes:
 - Must see loader, action, middleware, render and deferred-stream errors (deferred rejections are masked in production), and on Workers it must run inside `waitUntil`.
 - Today the only production signal is `void project logs` (Cloudflare live tail; no history on direct deploys).
 
-## Web vitals reporting
+### Web vitals reporting
 
 | Framework | Support |
 |---|---|
@@ -241,7 +243,7 @@ Design notes:
 
 **Void gap:** missing, but Differentiator (1). The valuable part is soft-navigation attribution. Void's client router knows navigation IDs (`navigation-engine.ts`), so it could tag metrics per visit across all 4 adapters.
 
-## Logging helpers
+### Logging helpers
 
 | Framework | App logger | Levels / sinks | Dev logging aids | Production log access |
 |---|---|---|---|---|
@@ -260,7 +262,7 @@ Design notes:
 - Browser↔terminal log forwarding (Differentiator: Next.js, Nuxt), which is especially useful for agents.
 - A request-scoped logger carrying a request ID: `child()` exists, but nothing binds it per request.
 
-## Build analysis / bundle analyzer / build profiling
+### Build analysis / bundle analyzer / build profiling
 
 | Framework | Bundle analyzer | Build timing / profiling |
 |---|---|---|
@@ -279,7 +281,7 @@ Design notes:
 
 A Void-specific angle: per-page client chunk size would also show island payoff (zero-JS islands vs hydrated pages) and Worker bundle size against Workers limits. Void already enforces a Free-plan-compatible-by-default policy.
 
-## Debugging and diagnostics
+### Debugging and diagnostics
 
 | Framework | Debugger guidance | Coded diagnostics / error catalog | Environment checks |
 |---|---|---|---|

@@ -23,7 +23,7 @@
 - **Env inlining is strict and safe.** Only `VITE_*` values are inlined, `.env` is ignored by builds, and a client import of a server key fails the build. But there is no runtime-configurable public config (Nuxt `runtimeConfig.public`, SvelteKit 3 dynamic public vars).
 - No multi-zone/microfrontend support (Next.js has it stable, Nuxt experimental).
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -64,7 +64,9 @@
 - **Embeddable fetch app on self-host targets.** `dist/ssr/app.js` serves routes *and* static assets in one Hono app. SvelteKit's `handler.js` is the closest equivalent (Node-only); Astro middleware mode does no static serving. It works across Node, Bun and Deno from one config key, and as a Web `fetch` handler rather than a Node `(req, res)` one.
 - **Early, precise target errors.** CF-only imports on other targets fail the build and name the importing file, rather than failing at runtime.
 
-## Output modes (server, static export, hybrid, SPA) and what each emits
+## Comparison
+
+### Output modes (server, static export, hybrid, SPA) and what each emits
 
 | Framework | Server (default) | Static export | Hybrid (per-route prerender inside a server build) | SPA | Notes |
 |---|---|---|---|---|---|
@@ -89,7 +91,7 @@
 - No `build.format` independent of the trailing-slash setting. `routing.trailingSlash` already chooses `about.html` or `about/index.html`. Astro's `directory` / `file` / `preserve` is separate.
 - Deploy-time prerender is Cloudflare-only.
 
-## Runtime targets and per-route runtime selection
+### Runtime targets and per-route runtime selection
 
 | Framework | Node | Bun | Deno | Cloudflare Workers | Vercel / Netlify / serverless | Per-route runtime |
 |---|---|---|---|---|---|---|
@@ -109,7 +111,7 @@
 
 **Void gap:** partial. Vercel, Netlify and AWS Lambda/serverless targets are missing (7/7 others reach Vercel and Netlify). There is no per-route runtime (Differentiator; low priority).
 
-## Feature parity across targets (what breaks where)
+### Feature parity across targets (what breaks where)
 
 | Framework | Mechanism for declaring support | What breaks off the primary target |
 |---|---|---|
@@ -131,7 +133,7 @@
 - The typed env schema (`void/env`) doesn't work off Cloudflare.
 - There is no declarative per-target feature-support API.
 
-## Adapter / preset model
+### Adapter / preset model
 
 | Framework | Official targets | Community | Public adapter API | What an adapter controls |
 |---|---|---|---|---|
@@ -163,7 +165,7 @@
 
 Design note: Void already has the pieces an adapter would need: a fetch-handler app (`app.js`), a resolved routing-rules list (`mergeRoutingRules`), the prerender manifest, and its asset-cache policy.
 
-## Config-level headers
+### Config-level headers
 
 | Framework | Mechanism | Matching | Conditions | Merge / precedence | Scope & limits |
 |---|---|---|---|---|---|
@@ -178,7 +180,7 @@ Design note: Void already has the pieces an adapter would need: a fetch-handler 
 
 **Void gap:** none for the core feature. Void is ahead of 5/7. Missing versus Next.js: `has`/`missing` request conditions (Differentiator) and named captures in header patterns.
 
-## Config-level redirects
+### Config-level redirects
 
 | Framework | Mechanism | Source syntax | Status codes | Query handling | Conditions / host | Order & precedence |
 |---|---|---|---|---|---|---|
@@ -201,7 +203,7 @@ Design note: Void already has the pieces an adapter would need: a fetch-handler 
 - A wildcard host (only literal hosts are allowed).
 - Named captures exist but are undocumented.
 
-## Config-level rewrites, fallbacks and proxying
+### Config-level rewrites, fallbacks and proxying
 
 | Framework | Pre-route rewrite | Post-route fallback | External proxy | Client-navigation aware | Programmatic |
 |---|---|---|---|---|---|
@@ -223,7 +225,7 @@ Design note: Void already has the pieces an adapter would need: a fetch-handler 
 - Rewrites applied in client navigation (Common: Next.js, TanStack, SvelteKit).
 - No `afterFiles` phase.
 
-## Trailing slash
+### Trailing slash
 
 | Framework | Option | Values / default | Behavior |
 |---|---|---|---|
@@ -238,7 +240,7 @@ Design note: Void already has the pieces an adapter would need: a fetch-handler 
 
 **Void gap:** partial. The boolean policy and the static file layout are in place, which matches Next.js. Missing: a per-route override and an `ignore`/`preserve` mode (SvelteKit, Astro, TanStack).
 
-## Base path and asset prefix / CDN
+### Base path and asset prefix / CDN
 
 | Framework | App base path | Link/router integration | Asset prefix / CDN | Notes |
 |---|---|---|---|---|
@@ -259,7 +261,7 @@ Design notes:
 - A base path touches the route matcher, the `Link`/`useForm`/`router.visit` URL builders in all 4 adapters, typed `routeUrl()`, the edge rules, `/_void/pages/*.json` and `/api` detection.
 - An asset prefix needs `runtime/routing/assets.ts` to stop hard-coding `/`.
 
-## Standalone / self-contained server output and embedding
+### Standalone / self-contained server output and embedding
 
 | Framework | Self-contained artifact | Dependency handling | Entry / embedding | Production server settings (env) |
 |---|---|---|---|---|
@@ -280,7 +282,7 @@ Design notes:
 - Dependency bundling or tracing for a node_modules-free artifact (Common: Next.js, Nuxt, SvelteKit-bun).
 - Production server settings: host, proxy headers, body limit, graceful shutdown (Common: Next.js, Nuxt, SvelteKit, Astro).
 
-## Skew protection / version-mismatch handling
+### Skew protection / version-mismatch handling
 
 | Framework | Version identity | Detection | Recovery | Host routing to the old deployment | Related |
 |---|---|---|---|---|---|
@@ -302,7 +304,7 @@ Design notes:
 - Old-asset retention across deploys is not guaranteed today. On a Void platform, missing `/assets/*` files 404 (docs/guide/app-types.md).
 - Server-side handlers are referenced by route rather than per-build IDs, so Void avoids Next.js's "Failed to find Server Action" class of skew.
 
-## Multi-app / zones / microfrontends
+### Multi-app / zones / microfrontends
 
 | Framework | Support |
 |---|---|
@@ -317,7 +319,7 @@ Design notes:
 
 **Void gap:** missing. Differentiator (Next.js stable; Nuxt [exp]). Depends on base path and asset prefix first.
 
-## Build-time env inlining rules
+### Build-time env inlining rules
 
 | Framework | Client-exposed values | Inlined at build? | Runtime public config | Server env | Schema / validation | Guardrails |
 |---|---|---|---|---|---|---|
@@ -340,7 +342,7 @@ Design notes:
 - A typed env schema on non-Cloudflare targets.
 - Per-mode env files (`.env.[mode]`, `.env.local`: TanStack, SvelteKit, Astro via Vite). This one is deliberate in Void.
 
-## Build hooks and build controls (brief)
+### Build hooks and build controls (brief)
 
 | Framework | Post-build hook / manifest | Build controls |
 |---|---|---|

@@ -1,7 +1,8 @@
 """Presentation for the per-framework inventory pages.
 
 The inventory text is left as written. This module only restructures the rendered HTML:
-a facts card, the original intro collapsed under "About this inventory", one collapsible
+a facts card, the original intro collapsed under "About this inventory", the twelve
+sections grouped under the same categories as the area sidebar, one collapsible
 row per capability (name, status, one-sentence summary), muted citations, and links from
 each section to its area comparison page.
 """
@@ -39,6 +40,15 @@ DOCS = {
     "solidstart": ("solidjs/solid-docs", "9a9d77a75642f6e2ab68d80b0081d45ad3424b13", "2026-10-29"),
     "astro": ("withastro/docs", "c73a3bea5a635c1afce0f0516ff22ecb34a3d7d4", "2026-11-03"),
 }
+# Same categories as the area sidebar, in the same order. Inventory numbers stay as written:
+# area 10 was later split into images, styling and markdown, and 8 sits with 12 under Developer Experience.
+CATEGORIES = [
+    ("Pages", (1, 2, 3, 4)),
+    ("Server", (5, 6, 7)),
+    ("Content", (9, 10)),
+    ("Build", (11,)),
+    ("Developer Experience", (8, 12)),
+]
 # the inventories keep the original 12 area headings; area 10 was later split into three pages
 SECTION_LINKS = {
     1: [("routing", "Routing")], 2: [("rendering", "Rendering modes")], 3: [("data-loading", "Data loading")],
@@ -226,6 +236,56 @@ def facts_html(slug: str) -> str:
     return f'<dl class="facts">{rows}</dl>'
 
 
+def _sections(root):
+    """Each h2 and the siblings that follow it, up to the next h2."""
+    out = []
+    for h2 in root.find_all("h2"):
+        nodes = [h2]
+        sib = h2.next_sibling
+        while sib is not None and not (isinstance(sib, Tag) and sib.name == "h2"):
+            nodes.append(sib)
+            sib = sib.next_sibling
+        out.append(nodes)
+    return out
+
+
+def _category_heading(soup, slug: str, label: str):
+    slug_id = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")
+    h = soup.new_tag("h2", id=f"src-{slug}-{slug_id}")
+    h.string = label
+    return h
+
+
+def _regroup(soup, slug: str):
+    """Put the numbered sections under the area categories, and anything else under Notes."""
+    root = soup.body if soup.body is not None else soup
+    sections = _sections(root)
+    if not sections:
+        return
+    by_num = {}
+    for label, nums in CATEGORIES:
+        for n in nums:
+            by_num[n] = label
+    buckets = {label: [] for label, _ in CATEGORIES}
+    notes = []
+    for nodes in sections:
+        m = re.match(r"\s*(\d+)\.", nodes[0].get_text())
+        label = by_num.get(int(m.group(1))) if m else None
+        (buckets[label] if label else notes).append(nodes)
+    for nodes in sections:
+        for n in nodes:
+            n.extract()
+    groups = [(label, buckets[label]) for label, _ in CATEGORIES if buckets[label]]
+    if notes:
+        groups.append(("Notes", notes))
+    for label, group in groups:
+        root.append(_category_heading(soup, slug, label))
+        for nodes in group:
+            nodes[0].name = "h3"
+            for n in nodes:
+                root.append(n)
+
+
 def inventory_view(slug: str, body_html: str) -> str:
     soup = BeautifulSoup(body_html, "html.parser")
     h1 = soup.find("h1")
@@ -266,4 +326,6 @@ def inventory_view(slug: str, body_html: str) -> str:
         ul.replace_with(box)
     # 3) muted citations
     _wrap_citations(soup)
+    # 4) group the flat section list under the area categories
+    _regroup(soup, slug)
     return f'<article class="doc doc-inventory">{soup}</article>'

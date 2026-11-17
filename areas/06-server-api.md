@@ -24,7 +24,7 @@
   - The "catch-all method" mechanism (a `default` export) is undocumented.
 - **Env leak protection is ahead of most.** Reading a server key from `void/env` in client code fails the client build *per key*, and `env.ts` is schema-validated.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -57,7 +57,9 @@
 - **`.dev`/`.prod` environment-only routes** and the `void gen route` scaffolder. Not seen elsewhere.
 - **Server-side typed `fetch`** to the app's own routes skips HTTP and forwards `cookie`/`authorization`. Nuxt's in-process `$fetch`/`serverFetch` is the only analogue.
 
-## API route definition
+## Comparison
+
+### API route definition
 
 | Framework | Convention | Method exports | HEAD | Unhandled method / OPTIONS | Catch-all method | Page + endpoint at same URL | Return value handling |
 |---|---|---|---|---|---|---|---|
@@ -79,7 +81,7 @@
 
 **Void gap:** partial. Missing: 405 with `Allow`, auto-`OPTIONS`, a HEAD override, and a *documented* catch-all method export.
 
-## Request & response API
+### Request & response API
 
 | Framework | Handler input | Request / params / body | Cookies | Response status & headers | Per-request locals |
 |---|---|---|---|---|---|
@@ -99,7 +101,7 @@
 
 **Void gap:** partial. Missing: documented cookie helpers with secure defaults (table stakes) and a proxy-aware client-IP helper (Common).
 
-## Request validation helpers
+### Request validation helpers
 
 | Framework | API | Slots | Libraries | Failure response | Form / multipart bodies | Type flow to client |
 |---|---|---|---|---|---|---|
@@ -116,9 +118,9 @@
 
 **Void gap:** none for JSON endpoints, where Void is ahead. Partial for form/multipart bodies (Astro actions; SvelteKit remote forms, exp.) and for a header slot (Nuxt).
 
-## Middleware
+### Middleware
 
-### Structure and scope
+#### Structure and scope
 
 | Framework | Global | Per-route | Per-directory / nested | Client-side | Server-function middleware |
 |---|---|---|---|---|---|
@@ -131,7 +133,7 @@
 | **SolidStart** | `solidStart({ middleware })` → `createMiddleware([h3 middleware])`. The `onRequest/onBeforeResponse` form is deprecated. | ✗ | ✗ | ✗ | ✗ (only `serverFunctions.onError`) |
 | **Astro** | `src/middleware.ts` `onRequest`; `sequence()`; integrations `addMiddleware({ order: 'pre'\|'post' })`; adapter `middlewareMode: 'edge'` | ✗ (Hono route-scoped middleware possible inside `src/fetch.ts`) | ✗ | ✗ | ✗ |
 
-### Behavior
+#### Behavior
 
 | Framework | Order | Short-circuit | Post-process | Context passing / typing | Coverage |
 |---|---|---|---|---|---|
@@ -157,7 +159,7 @@
 - per-chain inferred context: Differentiator (TanStack Start, React Router);
 - server-function middleware: TanStack Start only, and moot until Void has RPC.
 
-## Request-scoped context from deep code
+### Request-scoped context from deep code
 
 | Framework | Getter(s) | Mechanism | Scope / limits |
 |---|---|---|---|
@@ -174,7 +176,7 @@
 
 **Void gap:** partial. Common (5: Next.js, TanStack Start, Nuxt, SvelteKit, SolidStart). Design note: the store exists (`requestContext`, ALS on all targets). Exposing `getContext()`/`getRequest()` plus cookie and response-header setters is mostly API surface. Response mutation must respect when the page response is built, since pages read `c.res.headers` at render time.
 
-## Streaming responses & SSE
+### Streaming responses & SSE
 
 | Framework | Raw streaming | SSE server helper | SSE / stream client helper | Streaming RPC |
 |---|---|---|---|---|
@@ -191,7 +193,7 @@
 
 **Void gap:** none. Void is unique here.
 
-## Work after the response
+### Work after the response
 
 | Framework | API | Callable from | Runtime coverage | Notes |
 |---|---|---|---|---|
@@ -206,7 +208,7 @@
 
 **Void gap:** partial. On Cloudflare Void matches React Router, SvelteKit and Astro, but this is undocumented. It lacks a portable API, which is a Differentiator (Next.js, Nuxt). Design: `after(fn)` or `waitUntil(p)` from `void`, resolved through the existing ALS store. Node/Bun/Deno need a pending-promise set drained on shutdown, like Next.js's self-host drain.
 
-## Server-only code boundaries & env leakage
+### Server-only code boundaries & env leakage
 
 | Framework | File/dir convention | Marker | Enforcement | Env var protection | Other |
 |---|---|---|---|---|---|
@@ -226,7 +228,7 @@
 
 **Void gap:** partial; Table stakes (6). Design: deny `*.server.*` (and optionally `server/` dirs) in the client Vite environment with an import trace; allow `import type`; add a `void/server-only` marker; make the silent resource stubs build errors. Applies to all four adapters, including `.vue`/`.svelte` script blocks.
 
-## Custom server entry / request pipeline control
+### Custom server entry / request pipeline control
 
 | Framework | User-owned entry | Stage control | Interop / mounting |
 |---|---|---|---|
@@ -248,7 +250,7 @@
 
 **Void gap:** partial, Table stakes (6 offer a user-owned entry or first-stage hook; Nuxt has hooks only). Design: an optional `src/server.ts` that receives the generated app or its stages, much like Astro's `src/fetch.ts` but Hono-native. Void is well placed because it already composes stages as Hono middleware.
 
-## CORS, proxy and built-in security helpers
+### CORS, proxy and built-in security helpers
 
 | Framework | CORS | External proxy | Built-in gate | Other |
 |---|---|---|---|---|

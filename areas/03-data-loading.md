@@ -17,7 +17,7 @@
 - **Strengths to keep:** single-request navigation, `defer` groups (one resolver call feeds several props), four prefetch triggers with an SWR `cacheFor: [fresh, expire]` pair, an awaitable `router.prefetch()`, a static `/_void/pages/*.json` fast path, devalue props (`InferProps` matches the wire), per-route middleware around the loader, and one API across four UI libraries.
 - **Adapter split.** Deferred props are a `Promise` read with `use()` in React (with true Suspense streaming SSR) and a `{loading, value, error}` union in Vue, Svelte and Solid, whose component HTML is buffered.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -48,7 +48,9 @@
 - **Isomorphic typed `fetch`.** It runs in-process on the server and forwards `cookie`/`authorization`, similar to Nuxt `useRequestFetch` and the SvelteKit enhanced `fetch`.
 - **One data API across React, Vue, Svelte and Solid.** Only the deferred shape and React's Suspense streaming differ. Don't break this when adding layout loaders.
 
-## Data-loading model and which routes can load data
+## Comparison
+
+### Data-loading model and which routes can load data
 
 | Framework | Primitive | Page | Layout | Every nested segment | Any component (server data) | Notes |
 |---|---|---|---|---|---|---|
@@ -67,7 +69,7 @@
 
 **Void gap: missing.** Void has no layout loader, so it also has no parent-data access (SvelteKit `parent()`, TanStack Start `parentMatchPromise` / `beforeLoad` context, React Router `useRouteLoaderData` on the client), no per-layout revalidation, and no component-level server fetching.
 
-## Execution: server, client or isomorphic; parallel or sequential
+### Execution: server, client or isomorphic; parallel or sequential
 
 | Framework | Server-only | Client-only | Isomorphic | How multiple loaders run | Notes |
 |---|---|---|---|---|---|
@@ -86,7 +88,7 @@
 
 **Void gap: partial.** Server-only loading works. Client or isomorphic loaders are missing.
 
-## Loader arguments and request context
+### Loader arguments and request context
 
 | Framework | Params | Search/query | Request & headers | Cookies | Parent data | Abort signal | Per-request context | Knows it is a prefetch |
 |---|---|---|---|---|---|---|---|---|
@@ -105,7 +107,7 @@
 
 **Void gap: partial.** Context is rich. Missing: a documented prefetch or intent flag, parent data (because there are no layout loaders), and documented cookie and abort-signal access.
 
-## Return types and serialization
+### Return types and serialization
 
 | Framework | Wire format | Documented types beyond JSON | Promises in data | Custom types | Notes |
 |---|---|---|---|---|---|
@@ -122,7 +124,7 @@
 
 **Void gap:** partial. The rich serializer is in place. Missing: a custom-type hook (Common, 3: Nuxt, SvelteKit, SolidStart) and promises anywhere in the returned data (Common, 5), which is its own row above.
 
-## Request deduplication
+### Request deduplication
 
 | Framework | Server (within one request) | Client | Notes |
 |---|---|---|---|
@@ -137,7 +139,7 @@
 
 **Void gap: partial.** This matters only once there are several data sources per request, such as layout loaders. Then Void would need request-scoped memoization like Next.js's `React.cache`, SolidStart's `query()` or Nuxt's keys.
 
-## Client data cache (stale time, GC, keys)
+### Client data cache (stale time, GC, keys)
 
 | Framework | What is cached | Key | Freshness default | Retention | Back/forward | Controls |
 |---|---|---|---|---|---|---|
@@ -156,7 +158,7 @@
 
 **Void gap: partial.** Missing: a visited-page cache with back/forward reuse (Next.js, TanStack Start, SolidStart), a cache key or invalidation API other than the URL, and GC/stale settings for visited data. The engine option is a cheap first step.
 
-## Deferred and streamed data
+### Deferred and streamed data
 
 | Framework | API | Where promises can appear | When the work starts | Ordering | Errors | Timeout | Prefetch interaction | After a mutation |
 |---|---|---|---|---|---|---|---|---|
@@ -177,7 +179,7 @@
 
 **Void gap: partial.** Missing options: promises nested inside props, start-at-creation semantics (let `defer` take an already-started promise), a stream timeout (React Router `streamTimeout`), and re-resolving deferred props after a mutation (React Router, TanStack Start and SvelteKit re-run them).
 
-## Dependency tracking and invalidation
+### Dependency tracking and invalidation
 
 | Framework | Automatic tracking | Targeted invalidation | Revalidate all | Notes |
 |---|---|---|---|---|
@@ -192,7 +194,7 @@
 
 **Void gap: partial.** Revalidate-all exists through `router.refresh()`. Missing: invalidation by key, tag or URL of *live* data (5 peers); automatic dependency tracking (3 peers); refreshing only some props (Inertia-style partial reload; `refresh()` has no `only` option, client.ts `refresh(options?: VisitOptions)`).
 
-## Revalidation policy on navigation
+### Revalidation policy on navigation
 
 | Framework | Default on client GET navigation | Back/forward | Per-route control | Call-site control |
 |---|---|---|---|---|
@@ -209,7 +211,7 @@
 
 **Void gap: missing.** Void has no per-route or call-site revalidation policy. Today that is low impact; it becomes required alongside layout loaders.
 
-## Data for layouts and shared data
+### Data for layouts and shared data
 
 | Framework | Layout-level data | Global shared data | How children reach parent data | Re-run behavior |
 |---|---|---|---|---|
@@ -224,7 +226,7 @@
 
 **Void gap: missing** (see "Data-loading model" above). `useShared()` covers auth and the user, but it cannot load data for a section such as `/dashboard/**` without running for every request.
 
-## Preload hooks (prefetch × data)
+### Preload hooks (prefetch × data)
 
 | Framework | Triggers | What a prefetch runs | Loader-side control | Freshness of prefetched data | Manual API |
 |---|---|---|---|---|---|

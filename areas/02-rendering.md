@@ -17,7 +17,7 @@
 - **Prerendering is unusually strong at deploy time.** Pages render inside the built Worker with production bindings, before traffic switches, and seed the ISR cache. The build side is thinner than the field: no crawling, fixed concurrency (4), and failures only warn, with no option to fail the build. TanStack, Nuxt, SvelteKit and SolidStart all offer crawl and fail-on-error, and Next.js fails the build by default.
 - **`ssr = false` is "data-only".** The loader runs on the server and its props are embedded, then the page *mounts* rather than hydrates. That matches TanStack's `ssr: 'data-only'` but applies to the whole page, layouts included. It combines with `prerender = true` to give a prerendered client shell carrying build-time loader data, which no other framework offers per page.
 
-## Gap list for this area
+## Gap list
 
 | Gap in Void | Who has it (mechanism, briefly) | Prevalence | Notes for design (constraints, dependencies, adapter impact) |
 |---|---|---|---|
@@ -54,7 +54,9 @@
 - **`ssr = false` keeps the loader on the server** (TanStack `'data-only'` semantics): no client data code and no secret leakage.
 - **Parallel prerendering by default** (4 workers, safe serial fallback on output collisions, path-traversal guard). React Router, SvelteKit and Astro default to 1.
 
-## SSR (renderer per UI library)
+## Comparison
+
+### SSR (renderer per UI library)
 
 | Framework | Default | Server renderer | Buffered vs streaming | Who owns the HTML document | Notes |
 |---|---|---|---|---|---|
@@ -73,9 +75,9 @@
 
 **Void gap:** partial. Vue/Svelte/Solid adapters and island pages have no component streaming. Pages mode has no user-owned document shell. There is no per-request render-mode option (SolidStart's `createHandler(fn)`).
 
-## Streaming SSR mechanics
+### Streaming SSR mechanics
 
-### What streams, and when
+#### What streams, and when
 
 | Framework | Deferred primitive | Consumed with | What the stream carries | Order | First byte waits for | Timeout | Bots |
 |---|---|---|---|---|---|---|---|
@@ -88,7 +90,7 @@
 | SolidStart | Query reads under `<Suspense>` (`createAsync`) | `<Suspense fallback>` | HTML of resolved boundaries | Out-of-order | Shell; `createAsync(..., { deferStream: true })` makes the server wait for that resource | Not documented | Not documented |
 | Astro | Async child components (top-level page `await` blocks the whole document) | n/a | HTML | **In document order**; sibling async components fetch in parallel | Page frontmatter | — | None |
 
-### Response mutations and errors after the first byte
+#### Response mutations and errors after the first byte
 
 | Framework | Status / headers / cookies / redirect after first byte | Head tags after first byte | Error after shell |
 |---|---|---|---|
@@ -114,7 +116,7 @@
 - (3) No `streamTimeout`-style limit on deferred resolvers.
 - (4) No bot-aware buffering. This only matters once (1) exists.
 
-## Static prerendering
+### Static prerendering
 
 | Framework | When | Opt-in / default | Dynamic-param enumeration | Crawl links | Concurrency | Failure behavior | Output files | Client-nav data files | Unlisted params at runtime |
 |---|---|---|---|---|---|---|---|---|---|
@@ -140,7 +142,7 @@
 - No parent→child param chaining.
 - No strict mode for unlisted params.
 
-## Client-only routes and full SPA mode
+### Client-only routes and full SPA mode
 
 | Framework | Per-route client-only switch | Server work for that route | What the shell contains | Hydrate vs mount | Global SPA mode | Component-level client-only |
 |---|---|---|---|---|---|---|
@@ -163,7 +165,7 @@
 - No SSR'd fallback/pending UI or SSR'd parent layouts for client-only pages.
 - No component-level client-only helper in any adapter.
 
-## Partial hydration: islands and server components
+### Partial hydration: islands and server components
 
 | Framework | Model / status | Marker and granularity | Props crossing the boundary | Children / slots | Shared state between islands | Router interaction |
 |---|---|---|---|---|---|---|
@@ -186,7 +188,7 @@
 - Islands lack rich props, children/slots, per-instance strategies and strategy validation.
 - No islands-in-routed-pages.
 
-## Lazy-hydration strategies
+### Lazy-hydration strategies
 
 Next.js, React Router and SvelteKit have none: React selective hydration is automatic, and SvelteKit/SolidStart offer full hydration only.
 
@@ -218,7 +220,7 @@ Next.js, React Router and SvelteKit have none: React selective hydration is auto
 - No per-instance strategy.
 - No lazy hydration outside island pages.
 
-## Static shell with dynamic holes
+### Static shell with dynamic holes
 
 | Framework | Mechanism | Shell built when | Holes filled by | Cacheability | Status |
 |---|---|---|---|---|---|
@@ -231,7 +233,7 @@ Next.js, React Router and SvelteKit have none: React selective hydration is auto
 
 **Void gap:** missing. Differentiator: Next.js and Astro, both stable. Void already has the parts: edge ISR for shells, an island wrapper with props serialization, Worker endpoints. A Void "server island" (deferred island rendered by a Worker endpoint and fetched by a tiny loader script) would compose with prerendered/ISR shells. It needs its own cache key (props) and the same cookie-bypass rules.
 
-## Per-route rendering-mode control
+### Per-route rendering-mode control
 
 | Framework | Where it is set | Knobs | Inheritance | Static analysis | Per-request decision |
 |---|---|---|---|---|---|
@@ -254,7 +256,7 @@ Next.js, React Router and SvelteKit have none: React selective hydration is auto
 - No per-request mode function.
 - No error on non-literal flag values.
 
-## Zero-JS pages
+### Zero-JS pages
 
 | Framework | Mechanism | Scope | Notes |
 |---|---|---|---|
@@ -269,7 +271,7 @@ Next.js, React Router and SvelteKit have none: React selective hydration is auto
 
 **Void gap:** none functionally (4 of 7 have it; Void is at parity). Minor: no subtree/global toggle, and no speculation-rules emission like Nuxt.
 
-## Hydration mismatch handling
+### Hydration mismatch handling
 
 | Framework | What exists |
 |---|---|
