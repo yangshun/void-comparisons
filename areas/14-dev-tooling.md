@@ -1,6 +1,6 @@
 # 14. Dev tooling & observability
 
-**Versions:** Void 1.10.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · (src) found in Void's source but not in its docs · (unverified) not confirmed in docs or source
 
@@ -144,7 +144,7 @@
 
 | Framework | Create CLI options | Add-on / integration installer | In-project generators | Upgrade / migration |
 |---|---|---|---|---|
-| **Void** | `npm create void@latest` / `void init` with `--toolchain vite-plus\|vite`, `--framework react\|vue\|svelte\|solid`, `--starter sqlite\|postgresql\|mysql\|static`, `--deploy cloudflare\|void\|none`, `--tsconfig`, `--github` (Actions deploy workflow), `--git/--no-git`. Also sets up agents. | None | **`void gen model <name> [col:type[?]…]`** (Drizzle table + list/create/get-by-id routes; validator auto-detected: valibot/zod/arktype), **`gen route <path> [--methods]`**, **`gen middleware <name>`** (auto-numbered `01.auth.ts`), **`gen ssr [--react\|--vue\|--svelte\|--solid]`**, **`gen migration`**, **`gen cron`**, **`gen queue`**. No page/layout/component generator. | `void migrate` (legacy `void.json`/`wrangler.json(c)` → `void.config.ts` + `void.lock.json`) |
+| **Void** | `npm create void@latest` / `void init` with `--toolchain vite-plus\|vite`, `--framework react\|vue\|svelte\|solid`, `--starter sqlite\|postgresql\|mysql\|static`, `--deploy cloudflare\|void\|none`, `--tsconfig`, `--github` (Actions deploy workflow), `--git/--no-git`. Vite+ is the recommended toolchain, and its starters configure `@cloudflare/oxlint-config` in `vite.config.ts` for `vp lint` (`cli/template.ts`; on `main` after 1.12.0); plain Vite starters get no linter. Also sets up agents. | None | **`void gen model <name> [col:type[?]…]`** (Drizzle table + list/create/get-by-id routes; validator auto-detected: valibot/zod/arktype), **`gen route <path> [--methods]`**, **`gen middleware <name>`** (auto-numbered `01.auth.ts`), **`gen ssr [--react\|--vue\|--svelte\|--solid]`**, **`gen migration`**, **`gen cron`**, **`gen queue`**. No page/layout/component generator. | `void migrate` (legacy `void.json`/`wrangler.json(c)` → `void.config.ts` + `void.lock.json`) |
 | **Next.js** | `create-next-app`: `--ts/--js`, `--tailwind`, `--react-compiler`, `--cache-components`, `--eslint/--biome/--no-linter`, `--app`, `--api`, `--src-dir`, `--empty`, `--turbopack/--webpack`, `--import-alias`, `--use-*`, **`--example`**, `--skip-install`, `--disable-git`, **`--agents-md`**, `--agent-feedback` | — | None | **`next upgrade [--revision] [--agent …]`**, `@next/codemod` |
 | **React Router** | `create-react-router --template <repo>` | — | None (`react-router reveal` ejects entry files) | — |
 | **TanStack** | `@tanstack/cli create` (package manager, add-ons); TanStack Builder (web, AI-first); `gitpick` examples | Add-ons at create time | None (auto-filled `createFileRoute` paths) | — |

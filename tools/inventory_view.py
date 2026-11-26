@@ -12,7 +12,7 @@ import re
 from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 
 FACTS = {
-    "void": [("Version", "1.10.0"), ("UI libraries", "React 19, Vue 3.5, Svelte 5, Solid 1.9"), ("Bundler", "Vite 8"),
+    "void": [("Version", "1.12.0"), ("UI libraries", "React 19, Vue 3.5, Svelte 5, Solid 1.9"), ("Bundler", "Vite 8"),
              ("Server", "Hono"), ("Runtime", "Cloudflare Workers by default; Node, Bun or Deno")],
     "nextjs": [("Version", "16.4 (App Router)"), ("UI library", "React 19.2+"), ("Bundler", "Turbopack (Webpack optional)"),
                ("Server", "Next.js Node server"), ("Runtime", "Node.js 20.9+")],
@@ -31,7 +31,7 @@ FACTS = {
               ("Runtime", "Static by default; Node, Cloudflare and others through adapters")],
 }
 DOCS = {
-    "void": ("voidzero-dev/void", "268c2717981fa09b34994b155966da7d01076b49", "2026-11-17"),
+    "void": ("voidzero-dev/void", "b73d5776e3ba546100098fa0984282fae3f2ed28", "2026-11-26"),
     "nextjs": ("vercel/next.js", "a47959503adac8080a8b9a35f79617740d97925f", "2026-11-03"),
     "react-router": ("remix-run/react-router", "db80dda076ec9cdcefff480079252fe0c977710e", "2026-11-02"),
     "tanstack-start": ("TanStack/router", "da8c28c498230a5730ce75b2693baeeb3ef68ac1", "2026-11-03"),

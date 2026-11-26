@@ -1,6 +1,6 @@
 # Quick wins
 
-Small changes that close a gap or fix a rough edge, taken from the area comparisons. Several are already half-built in Void's source. Re-checked against [`268c271`](https://github.com/voidzero-dev/void/commit/268c2717981fa09b34994b155966da7d01076b49) (1.10.0, 2026-11-17).
+Small changes that close a gap or fix a rough edge, taken from the area comparisons. Several are already half-built in Void's source. Re-checked against [`b73d577`](https://github.com/voidzero-dev/void/commit/b73d5776e3ba546100098fa0984282fae3f2ed28) (1.12.0 plus 6 commits on `main`, 2026-11-26).
 
 ## Already in the engine
 
@@ -22,7 +22,7 @@ The client already knows the page id and the URL pattern, from the manifest and 
 
 ### Turn silent client stubs into build errors
 
-A value import from a `.server.ts` companion into a component ships to the client. There is no `server-only` marker. The client stubs for `void/db`, `kv`, `ai`, `queues`, `storage` and `isr` are silent no-ops (`pages/plugin-client-stubs.ts`), so a mistaken import can leak server code or a client call can look like it worked. `void/live` and `void/durable` already fail the build. `void/sandbox` and `void/email` throw at call time. Reading a server env key from the client already fails the build, per key (`plugin-env-client-guard.ts`).
+A value import from a `.server.ts` companion into a component ships to the client. There is no `server-only` marker. The client stubs for `void/db`, `kv`, `ai`, `queues`, `storage` and `isr` are silent no-ops (`plugin-client-stubs.ts`), so a mistaken import can leak server code or a client call can look like it worked. `void/live` and `void/durable` already fail the build. `void/sandbox` and `void/email` throw at call time. Reading a server env key from the client already fails the build, per key (`plugin-env-client-guard.ts`).
 
 The same treatment for the remaining stubs, plus a client-environment resolve check that allows `import type` and prints an import trace, is the first item under *What to work on first* in the [summary](overview.md). The check has to cover `.vue` and `.svelte` script blocks as well as React and Solid. `routes/` and `middleware/` stay out of the client graph already. Also a row in [Bugs](bugs.md). Table stakes (6). [Server API](areas/06-server-api.md).
 

@@ -12,7 +12,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 
 | Framework | Version documented | Notes |
 |---|---|---|
-| Void | 1.10.0 | Docs plus `packages/` source |
+| Void | 1.12.0 | Docs plus `packages/` source, read on `main` 6 commits after the 1.12.0 release. Two of those commits matter here and are not in a release yet: deploy recovery (skew protection for navigations) and the lint config in Vite+ starters |
 | Next.js | 16.4 stable | App Router only; a few 16.5-canary items are flagged |
 | React Router | 8.x | Framework mode only |
 | TanStack Start | 1.169+ (first stable) | React flavor; gaps in the Solid flavor are noted |
@@ -23,7 +23,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 
 | Framework | Repo and paths read | Commit (date) |
 |---|---|---|
-| Void | [voidzero-dev/void](https://github.com/voidzero-dev/void): `docs/`, `packages/` | [`268c2717981fa09b34994b155966da7d01076b49`](https://github.com/voidzero-dev/void/commit/268c2717981fa09b34994b155966da7d01076b49) (2026-11-17) |
+| Void | [voidzero-dev/void](https://github.com/voidzero-dev/void): `docs/`, `packages/` | [`b73d5776e3ba546100098fa0984282fae3f2ed28`](https://github.com/voidzero-dev/void/commit/b73d5776e3ba546100098fa0984282fae3f2ed28) (2026-11-26) |
 | Next.js | [vercel/next.js](https://github.com/vercel/next.js): `docs/01-app/` | [`a47959503adac8080a8b9a35f79617740d97925f`](https://github.com/vercel/next.js/commit/a47959503adac8080a8b9a35f79617740d97925f) (2026-11-03) |
 | React Router | [remix-run/react-router](https://github.com/remix-run/react-router): `docs/` | [`db80dda076ec9cdcefff480079252fe0c977710e`](https://github.com/remix-run/react-router/commit/db80dda076ec9cdcefff480079252fe0c977710e) (2026-11-02) |
 | TanStack Start | [TanStack/router](https://github.com/TanStack/router): `docs/start/`, `docs/router/` | [`da8c28c498230a5730ce75b2693baeeb3ef68ac1`](https://github.com/TanStack/router/commit/da8c28c498230a5730ce75b2693baeeb3ef68ac1) (2026-11-03) |
@@ -35,7 +35,7 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 **To update this analysis later**, diff each repo from its recorded commit, limited to the paths above, and re-check only the areas those changes touch. For Void:
 
 ```bash
-git -C void log --oneline 268c2717981fa09b34994b155966da7d01076b49..HEAD -- docs packages
+git -C void log --oneline b73d5776e3ba546100098fa0984282fae3f2ed28..HEAD -- docs packages
 ```
 
 Then update the affected area pages, `inventories/void.md` (its version, commit, and every claim the diff changes), the Void facts card and sidebar label, and this table. The same command works for each framework repo with its own commit and paths. Leave the other seven inventories as the snapshots that were read.
@@ -67,7 +67,7 @@ Three design decisions explain most of what follows:
 
 ## What to work on first
 
-The gaps cluster around a handful of foundations. Since 1.6.2, Void has shipped in-layout `_error` and `_not-found` components, `c.status()` on rendered pages, and devalue page data (`Date`, `Map`, `Set`, `bigint`, and cyclic references survive the wire). What still changes the **page-object protocol** is layout data and action results. **Recommendation: design those together as one protocol revision ("page protocol v2")** rather than migrating the client engine, the prefetch cache, the static `/_void/pages/*.json` files and all four adapters several times over.
+The gaps cluster around a handful of foundations. Since 1.6.2, Void has shipped in-layout `_error` and `_not-found` components, `c.status()` on rendered pages, devalue page data (`Date`, `Map`, `Set`, `bigint`, and cyclic references survive the wire), and deploy recovery: a tab whose build is gone reloads on its next navigation. What still changes the **page-object protocol** is layout data and action results. **Recommendation: design those together as one protocol revision ("page protocol v2")** rather than migrating the client engine, the prefetch cache, the static `/_void/pages/*.json` files and all four adapters several times over.
 
 The clusters below are in suggested order. The reasoning is in the last column of each.
 
@@ -119,7 +119,7 @@ The clusters below are in suggested order. The reasoning is in the last column o
 | **Navigation lifecycle hooks**, plus blocking that covers back/forward and programmatic navigation | Table stakes (6) / Common (5) | Today the only guard is `Link onNavigate`. | [1](areas/01-routing.md) |
 | **Segment features:** optional segments (5), zero-length catch-all (4), param matchers that affect matching (4), partial-segment params (4) | Common | One parser plus the client matcher. | [1](areas/01-routing.md) |
 | **URL/search changes without a loader re-run**, plus history `state`, shallow routing and modal routes | Common (4–5) | Every query change refetches today, and Vue remounts the page. | [1](areas/01-routing.md) |
-| **Skew protection** (deployment ID, reload when versions mismatch or a chunk fails to load) | Common (5) | A mismatched `X-VoidPages-Version` reloads the document, which covers a serialization upgrade. An unknown page component or a chunk-load failure after a deploy still rejects the navigation with no reload. | [13](areas/13-build-deploy.md) |
+| **Skew recovery beyond navigations:** a reload when a chunk fails to load, coverage for static output, and an update signal | Differentiator (2) | Navigations already recover (5 of the 7 others handle skew). Each build has an id in `X-VoidPages-Build`, and another build's GET gets a reload. A chunk that still fails to load goes to the error boundary, prerendered pages of an `output: "static"` app carry no id, and nothing tells an idle tab that a new build is live. | [13](areas/13-build-deploy.md) |
 
 ### G. Caching
 

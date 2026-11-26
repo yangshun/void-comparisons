@@ -33,7 +33,7 @@ AREAS = [
     ("14-dev-tooling", "dev-tooling", "Dev tooling & observability"),
 ]
 SOURCES = [
-    ("void", "Void 1.10.0"),
+    ("void", "Void 1.12.0"),
     ("nextjs", "Next.js 16.4"),
     ("react-router", "React Router 8"),
     ("tanstack-start", "TanStack Start 1.169"),
@@ -304,7 +304,7 @@ grid.append("</ol></section>")
 overview = overview.replace("<!--AREA-GRID-->", "".join(grid))
 HERO = ('<header class="hero">'
         '<h1>Void vs. the major metaframeworks</h1>'
-        '<p class="lede">Void 1.10.0 compared with Next.js, React Router, TanStack Start, Nuxt, SvelteKit, SolidStart '
+        '<p class="lede">Void 1.12.0 compared with Next.js, React Router, TanStack Start, Nuxt, SvelteKit, SolidStart '
         f'and Astro across {len(AREAS)} areas, down to props and options, to find Void\'s feature gaps and guide its roadmap.</p>'
         '<div class="hero-actions"><a class="btn btn-primary" href="#gaps">Open the gap explorer</a>'
         '<a class="btn" href="#routing">Start with routing</a></div>'
