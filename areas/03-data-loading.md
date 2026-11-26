@@ -1,6 +1,6 @@
 # 3. Data loading
 
-**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.4 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default)
 
@@ -166,7 +166,7 @@
 | **Next.js** | Suspense + async components; promise props + `use()` | anywhere | when created | out-of-order (Suspense) | nearest `error.js` / `catchError` | — | Prefetch goes down to `loading.js` or the App Shell | Revalidation re-renders |
 | **React Router** | Un-awaited promises nested in the loader return (a bare top-level promise is not allowed); `<Await>` / `use()` | nested in the returned object | when created; streaming **starts after all loaders settle** | as they resolve | `errorElement` or route `ErrorBoundary` | `streamTimeout` (default 4950 ms) | `<link rel=prefetch>` of `.data` | All loaders re-run (including deferred) |
 | **TanStack Start** | Un-awaited promises; `<Await>` / `use()`; server-fn `ReadableStream` / async generators | anywhere | when created | as they resolve | nearest error boundary; serialized error | — | Promises share the loader cache lifecycle and can be preloaded | `router.invalidate()` re-runs |
-| **Nuxt** | No promise streaming: use `lazy`, `server: false` or `immediate: false` (client fetch). `ssrStreaming` [exp] streams Suspense HTML | — | — | — | `error` ref | — | — | — |
+| **Nuxt** | No promise streaming: use `lazy`, `server: false` or `immediate: false` (client fetch). `ssrStreaming` [exp] streams Suspense HTML | — | — | — | `error` ref; in production, a server error that is neither an HTTP error nor a failed `$fetch` with a status arrives as a generic 500 | — | — | — |
 | **SvelteKit** | Promises from **server** load, top-level or nested; `{#await}` | server load | when created | as they resolve | `{:catch}` | — | preload runs load | Loads re-run |
 | **SolidStart** | Suspense around `createAsync` reads; promises nested in server-fn returns; `deferStream: true` opts back into blocking | anywhere | when the query starts | out-of-order HTML | `<ErrorBoundary>` | — | `preload` warms queries | `revalidate` |
 | **Astro** | In-order HTML streaming of async components; server islands (`server:defer`) | components | when rendered | document order | — | — | — | — |

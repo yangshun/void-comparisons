@@ -1,8 +1,8 @@
 # 6. Server & API
 
-**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.4 · SolidStart 2.0 · Astro 7.4
 
-**Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · (src) found in Void's source but not in its docs
+**Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · [N5] new or changed in Nuxt 5 · (src) found in Void's source but not in its docs
 
 **Paths:** Void file paths are in the `voidzero-dev/void` repo. Short paths such as `pages/scan.ts` are under `packages/void/src/`; paths that start with a package name, such as `react/src/…`, are under `packages/`.
 
@@ -53,7 +53,7 @@
 - **Server middleware covers every client navigation** without tricks, because each navigation is a server request. React Router covers navigations only when a server loader runs, and SolidStart doesn't guarantee coverage.
 - **Return-value conversion** (object→JSON, string→HTML, null→204). Only Nuxt does this too.
 - **Typed internal rewrites.** `c.rewrite()` takes typed destinations, re-runs middleware, and offers `c.originalUrl()`/`c.isRewritten()`. Dev builds expose an `X-Void-Routing` trace header.
-- **Per-key env leak detection at build time** plus startup schema validation. Only SvelteKit's `src/env.ts` matches it on validation.
+- **Per-key env leak detection at build time** plus startup schema validation. On validation, only SvelteKit's `src/env.ts` matches it, with Nuxt 5's `runtimeConfig` schemas [N5] close behind (types and required values only).
 - **`.dev`/`.prod` environment-only routes** and the `void gen route` scaffolder. Not seen elsewhere.
 - **Server-side typed `fetch`** to the app's own routes skips HTTP and forwards `cookie`/`authorization`. Nuxt's in-process `$fetch`/`serverFetch` is the only analogue.
 
@@ -141,7 +141,7 @@
 | **Next.js** | Config headers → redirects → Proxy → beforeFiles rewrites → filesystem → afterFiles → dynamic → fallback | Return `Response`, redirect or rewrite | ✗ (runs before rendering; can only set response headers on `next()`) | Request headers or cookies only | Every request including `_next/static` unless matched out; `_next/data` always |
 | **React Router** | Nested root→leaf down, then back up | Throw `redirect()`/Response. `next()` can be called once and is auto-called if omitted. | Headers after `next()` (don't touch the body) | `context.set(createContext<T>())`: typed keys | Document requests always. Client navigations **only when a `.data` request is made** (a server loader/action must run). |
 | **TanStack Start** | Dependency-first: global request → global function → per-function chain → handler; route-level before per-method | Don't call `next()` | `result.response` is mutable | `next({ context })` with **types inferred through the chain**; `sendContext` (must be validated server-side) | SSR, server routes, server functions |
-| **Nuxt** | Not documented (alphabetical by filename; from memory, unverified) | Returning any value ends the request (discouraged) | ✗ in middleware (Nitro `response` hook instead) | `event.context` | Every request. **Nuxt 5:** a server-middleware error returns JSON even for a page navigation. |
+| **Nuxt** | Not documented (alphabetical by filename; from memory, unverified) | Returning any value ends the request (discouraged) | ✗ in middleware (Nitro `response` hook instead) | `event.context` | Every request. **Nuxt 5:** a server-middleware error returns JSON even for a page navigation, and middleware also runs for WebSocket upgrades. A middleware `route` matches case-sensitively and does not decode `%2F`, so the docs say not to rely on it to protect pages. |
 | **SvelteKit** | `sequence()` | Return a `Response` without calling `resolve` | Edit `response.headers`; `resolve(event, { transformPageChunk, filterSerializedResponseHeaders, preload })` | `event.locals` (`App.Locals`) | Pages, endpoints, data requests, remote calls, prerender. Not static assets or prerendered pages. |
 | **SolidStart** | Array order (onion) | Return a `Response` | After `await next()` | `event.locals` (typed); `getRequestEvent()` works inside | Docs: **not guaranteed on client navigations**, so don't use it for authorization |
 | **Astro** | `sequence()` onion; integration pre/post | Return a `Response` | Full response, including body rewrite | `locals` (`App.Locals`; edge mode JSON-serializes it) | On-demand requests. **Runs at build for prerendered pages.** Attempts 404/500 pages. |
@@ -224,7 +224,7 @@
 **Behavioral differences that matter:**
 - In Void the `.server.ts` file is *the* recommended home for loaders and DB code, and it also exports the `Props` type that components import. A single `import { Props }` written without `type`, or a shared helper imported from it, ships server code with no warning. React Router, TanStack Start and SvelteKit make exactly this case a build error.
 - Void's silent `{}` stubs for `void/db`, `void/kv` and friends turn a mistaken client import into a runtime `undefined` access rather than a build error. This is inconsistent with `void/live` and `void/durable`.
-- Void's env guard is finer-grained than most, working per key rather than per module. Only SvelteKit's schema matches it on validation.
+- Void's env guard is finer-grained than most, working per key rather than per module. Only SvelteKit's schema matches it on validation. Nuxt 5 checks `runtimeConfig` schemas at startup [N5], but not refinements.
 
 **Void gap:** partial; Table stakes (6). Design: deny `*.server.*` (and optionally `server/` dirs) in the client Vite environment with an import trace; allow `import type`; add a `void/server-only` marker; make the silent resource stubs build errors. Applies to all four adapters, including `.vue`/`.svelte` script blocks.
 
@@ -236,7 +236,7 @@
 | **Next.js** | Custom server (Node; incompatible with `standalone`); adapters API | Proxy runs after config headers/redirects | — |
 | **React Router** | `createRequestHandler` + adapters (`@react-router/express`, cloudflare, architect) with `getLoadContext`. `entry.server.tsx`: default `handleRequest`, `handleDataRequest`, `handleError`, `streamTimeout`. `@react-router/serve` is zero-config. | Full (you own the server) | Express ecosystem |
 | **TanStack Start** | `src/server.ts` `createServerEntry({ fetch })`, `createStartHandler`, `handler.fetch(request, { context })` with typed `requestContext`; `src/start.ts` | Full | Any fetch-handler code |
-| **Nuxt** | No entry file. Nitro server plugins with runtime hooks `request`/`response`/`error`; renderer hooks `render:html`/`render:response`; `serverHandlers` | Hooks only | `nitro/h3`, `fromNodeMiddleware` (discouraged) |
+| **Nuxt** | No entry file. Nitro server plugins with runtime hooks `request`/`response`/`error`; renderer hooks (`render:route`, `render:html`, `render:document`, …) from a renderer plugin (`addRendererPlugin`, any server builder); `serverHandlers`. Nuxt 5 has no `render:response` hook | Hooks only | `nitro/h3`, `fromNodeHandler` (discouraged; Node-only, fails for in-process `serverFetch`/`$fetch`) |
 | **SvelteKit** | `handle` is the first stage and can bypass routing; `init()`; adapter-node `handler.js` mounts into Express/Polka | Good | Connect middleware via adapter-node or Vite plugin (dev) |
 | **SolidStart** | Server entry is an H3 app (`createHandler`); Nitro `server/routes` alongside; `decorateHandler/decorateMiddleware` (**exp.**) | Good | H3 / Nitro |
 | **Astro** | **`src/fetch.ts`** (stable since 7.0; `fetchFile` config) composes `astro/fetch` stages: `trailingSlash`, `redirects`, `sessions`, `actions`, `middleware`, `pages`, `notFound` (7.4), `i18n`, `cache`. Or a Hono app via `astro/hono`. | **Full, per stage** | Hono |

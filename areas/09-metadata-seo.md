@@ -1,6 +1,6 @@
 # 9. Metadata & SEO
 
-**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.4 · SolidStart 2.0 · Astro 7.4
 
 **Note:** Void's head behavior was re-checked in `pages/head.ts` (server merge), `pages/head-client.ts` (client-navigation updates) and `pages/protocol.ts`.
 
@@ -56,7 +56,7 @@
 | Next.js | `metadata` / `generateMetadata({ params, searchParams }, parent)` | Yes (`layout`), evaluated root → page | No (Server Component `layout`/`page` files only) | Root layout + metadata file conventions | No | **Async**. `parent` is a promise of the resolved parent metadata. `redirect()`/`notFound()` are allowed. |
 | React Router | `meta` export **or** React 19 `<title>`/`<meta>`/`<link>` in the route component (recommended) | Yes (each route) | **Yes** (React 19 elements, anywhere) | Root route | No | `meta(args)` is sync over `loaderData`/`matches`; runs on server and client. |
 | TanStack Start | Route `head(ctx)`; separate route `scripts()` for body scripts | Yes (every route, including root/layout routes) | No (`ScriptOnce` only) | Root route | No | **Sync or async** (`Promise` return type). Runs after loaders; ctx `{ matches, match, params, loaderData }`. |
-| Nuxt | `useHead`, `useSeoMeta`, `useHeadSafe`, `<Title>`/`<Meta>`/… | Yes | **Yes** (any `setup`, `app.vue`, plugins) | `app.head` (static, not reactive) | Nitro `render:html` hook (string-level rewrite) | Reactive (refs, getters or a function input); entries are disposed with the component. |
+| Nuxt | `useHead`, `useSeoMeta`, `useHeadSafe`, `<Title>`/`<Meta>`/… | Yes | **Yes** (any `setup`, `app.vue`, plugins) | `app.head` (static, not reactive) | Renderer `render:html` hook (string-level rewrite) and `render:document` (the whole serialized page, unstreamed responses), from a renderer plugin under any server builder | Reactive (refs, getters or a function input); entries are disposed with the component. |
 | SvelteKit | `<svelte:head>` | Yes | **Yes** | `app.html` template | `handle` → `transformPageChunk` (string-level) | Template-driven from `load` data |
 | SolidStart | `@solidjs/meta` `<Title>`, `<Meta>`, `<Link>`, `<Style>` under `<MetaProvider>` | Yes | **Yes** | `entry-server.tsx` document | — | Components (with Suspense) |
 | Astro | Raw `<head>` HTML in pages and layouts (props / named slots) | Yes | **Yes** | Layouts | Middleware can rewrite the HTML | Top-level `await` in frontmatter |

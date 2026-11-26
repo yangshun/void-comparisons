@@ -1,6 +1,6 @@
 # 14. Dev tooling & observability
 
-**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.4 · SolidStart 2.0 · Astro 7.4
 
 **Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · (src) found in Void's source but not in its docs · (unverified) not confirmed in docs or source
 
@@ -91,7 +91,7 @@
 | **Next.js** | Yes, source-mapped | Yes | Yes | Yes | [Cache Components] blocking-route insights with fix cards linking `/docs/messages/*` and a **Copy prompt** for agents; **Vulnerability Insight** for a known CVE in the installed version; `logging.browserToTerminal` |
 | **React Router** | Unsanitized errors shown in `ErrorBoundary` in dev | Error boundary | Vite overlay (unverified) | — | — |
 | **TanStack** | Not documented | — | Vite (unverified) | — | Import-protection violations print traces + code frames; dev "mock" mode keeps the app running |
-| **Nuxt** | Dev error page with the `cause` chain | — | Overlay receives template diagnostics | — | Errors from deploy-target environments shown in the dev overlay |
+| **Nuxt** | Dev error page with the `cause` chain | — | Template diagnostics are shown on every open page until fixed | — | Errors from deploy-target environments shown in the dev overlay |
 | **SvelteKit** | Not documented | — | Vite overlay (unverified); `frame` excerpt for Svelte syntax errors | — | Dev `debugger` pause before a full reload on navigation failure |
 | **SolidStart** | **`devOverlay`** (default `true`; excluded from production) | Yes ("inspecting application errors") | — | — | Also inspects **server function calls** |
 | **Astro** | Dev overlay | — | Yes | — | Replaced by terminal logging if `500.astro` exists |

@@ -8,7 +8,7 @@ This page compares **Void** (native "Void app" mode) with seven metaframeworks, 
 
 ## Versions compared
 
-Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 2026-11-04. Void was read from both its docs and its source. The commit column records exactly what was read.
+Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 2026-11-25. Void was read from both its docs and its source. The commit column records exactly what was read.
 
 | Framework | Version documented | Notes |
 |---|---|---|
@@ -16,8 +16,8 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 | Next.js | 16.4 stable | App Router only; a few 16.5-canary items are flagged |
 | React Router | 8.x | Framework mode only |
 | TanStack Start | 1.169+ (first stable) | React flavor; gaps in the Solid flavor are noted |
-| Nuxt | 5.0 **pre-release** (release est. Q4 2026) | Most APIs already shipped in 4.x; anything new in 5 is flagged |
-| SvelteKit | 3.x (3.1.1) | Generated API types were checked as well as the docs |
+| Nuxt | 5.0 **pre-release** (release est. Q4 2026) | Most APIs already shipped in 4.x (4.7 is the latest stable); anything new in 5 is flagged |
+| SvelteKit | 3.x (3.4.1) | Generated API types were checked as well as the docs |
 | SolidStart | 2.0 | Its Nitro v3 deploy layer is still beta |
 | Astro | 7.4 | |
 
@@ -27,8 +27,8 @@ Each framework's docs were cloned from its GitHub repo between 2026-10-29 and 20
 | Next.js | [vercel/next.js](https://github.com/vercel/next.js): `docs/01-app/` | [`a47959503adac8080a8b9a35f79617740d97925f`](https://github.com/vercel/next.js/commit/a47959503adac8080a8b9a35f79617740d97925f) (2026-11-03) |
 | React Router | [remix-run/react-router](https://github.com/remix-run/react-router): `docs/` | [`db80dda076ec9cdcefff480079252fe0c977710e`](https://github.com/remix-run/react-router/commit/db80dda076ec9cdcefff480079252fe0c977710e) (2026-11-02) |
 | TanStack Start | [TanStack/router](https://github.com/TanStack/router): `docs/start/`, `docs/router/` | [`da8c28c498230a5730ce75b2693baeeb3ef68ac1`](https://github.com/TanStack/router/commit/da8c28c498230a5730ce75b2693baeeb3ef68ac1) (2026-11-03) |
-| Nuxt | [nuxt/nuxt](https://github.com/nuxt/nuxt): `docs/` | [`9496b7e5fe75740a5f8ef9826a2918667e4b4a82`](https://github.com/nuxt/nuxt/commit/9496b7e5fe75740a5f8ef9826a2918667e4b4a82) (2026-11-03) |
-| SvelteKit | [sveltejs/kit](https://github.com/sveltejs/kit): `documentation/docs/`, `packages/kit/types/` | [`fe4deb1b76d876bdca56db489388c98ed74973f5`](https://github.com/sveltejs/kit/commit/fe4deb1b76d876bdca56db489388c98ed74973f5) (2026-11-04) |
+| Nuxt | [nuxt/nuxt](https://github.com/nuxt/nuxt): `docs/` | [`03c8441d1f410b6be5bc1758cfe880e764f09cf9`](https://github.com/nuxt/nuxt/commit/03c8441d1f410b6be5bc1758cfe880e764f09cf9) (2026-11-25) |
+| SvelteKit | [sveltejs/kit](https://github.com/sveltejs/kit): `documentation/docs/`, `packages/kit/types/` | [`db56567747038a090496808d2428181d9eb85f39`](https://github.com/sveltejs/kit/commit/db56567747038a090496808d2428181d9eb85f39) (2026-11-25) |
 | SolidStart | [solidjs/solid-docs](https://github.com/solidjs/solid-docs): `src/routes/solid-start/`, `src/routes/solid-router/` | [`9a9d77a75642f6e2ab68d80b0081d45ad3424b13`](https://github.com/solidjs/solid-docs/commit/9a9d77a75642f6e2ab68d80b0081d45ad3424b13) (2026-10-29) |
 | Astro | [withastro/docs](https://github.com/withastro/docs): `src/content/docs/en/` | [`c73a3bea5a635c1afce0f0516ff22ecb34a3d7d4`](https://github.com/withastro/docs/commit/c73a3bea5a635c1afce0f0516ff22ecb34a3d7d4) (2026-11-03) |
 
@@ -164,6 +164,7 @@ The clusters below are in suggested order. The reasoning is in the last column o
 | Vercel/Netlify/serverless targets | Table stakes (7) | [13](areas/13-build-deploy.md) |
 | Public adapter/preset API (with post-build hook and per-target feature declarations) | Common (5) | [13](areas/13-build-deploy.md) |
 | Self-contained Node output; production server settings (host, proxy headers, body limit, graceful shutdown) | Common (3) / Common (4) | [13](areas/13-build-deploy.md) |
+| Typed env schema on Node/Bun/Deno (`void/env` is Cloudflare-only) | Common (3) | [8](areas/08-type-safety.md), [13](areas/13-build-deploy.md) |
 | Server and client error-reporting hooks | Common (4) | [7](areas/07-loading-error.md), [14](areas/14-dev-tooling.md) |
 | Instrumentation / OpenTelemetry | Common (3) | [14](areas/14-dev-tooling.md) |
 | In-browser devtools (route, page data, cache), which must work for all four UI libraries | Common (5) | [14](areas/14-dev-tooling.md) |

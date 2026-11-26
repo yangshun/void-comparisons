@@ -1,8 +1,8 @@
 # 5. Caching & revalidation
 
-**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.1 · SolidStart 2.0 · Astro 7.4
+**Versions:** Void 1.12.0 · Next.js 16.4 (App Router) · React Router 8 (framework mode) · TanStack Start 1.169 (React) · Nuxt 5.0 pre-release (4.x is stable) · SvelteKit 3.4 · SolidStart 2.0 · Astro 7.4
 
-**Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · [prev] Next.js's pre-16 caching model, still documented · (unverified) not confirmed in docs or source
+**Markers:** [exp] experimental, unstable or canary · [CC] Next.js with Cache Components on (the create-next-app default) · [prev] Next.js's pre-16 caching model, still documented · [N5] new or changed in Nuxt 5 · (unverified) not confirmed in docs or source
 
 **Paths:** Void file paths are in the `voidzero-dev/void` repo. Short paths such as `pages/scan.ts` are under `packages/void/src/`; paths that start with a package name, such as `react/src/…`, are under `packages/`.
 
@@ -140,7 +140,7 @@
 | Next.js | **`'use cache'`** (file/component/function; async). Key = build ID + function ID + serialized args (**closures bound as args**) + root params read. In-memory LRU by default. `'use cache: remote'` (durable shared handler; not across deploys). `'use cache: private'` (may read cookies/headers; per-request + **browser** cache only). [prev] `fetch` cache (`force-cache`, `next.revalidate`, `next.tags`), `unstable_cache(fn, keyParts, {tags, revalidate})` (the only one that **persists across deployments**) | `fetch` GET memoized per render pass; `React.cache()`; `use cache: private` per request | `cacheLife` presets + custom profiles (typed) | `cacheTag()`; soft tags derived from paths | Stable (CC since 16.0) |
 | React Router | None (docs recommend backend caches) | None documented | — | — | — |
 | TanStack | None at runtime. **Static Server Functions [exp]**: `staticFunctionMiddleware` (last) on a GET server function writes its result as static JSON during prerender (key = function ID + payload hash), embeds it in HTML, and later client calls fetch the JSON | In-flight loader work shared between preload and navigation (same match); RSC `React.cache` [exp] | — | — | Exp |
-| Nuxt | **`defineCachedFunction()` / `defineCachedHandler()`** from `nitro/cache` (not portable to `@nuxt/vite-server`). Options not in the docs clone (`maxAge`, `swr`, `getKey`, `varies`, … **unverified**) | `useAsyncData`/`useFetch` keys dedupe and share refs in one SSR pass (`dedupe: 'cancel' \| 'defer'`); `callOnce`; `sharedPrerenderData` | Nitro options (unverified) | Key-based | Stable (Nitro) |
+| Nuxt | **`defineCachedFunction()` / `defineCachedHandler()`** from `nitro/cache` (not portable to `@nuxt/vite-server`). [N5] upgrade guide: `maxAge`, `allowQuery` (the query is empty inside a cached handler otherwise; `nitro.cache.defaults` sets it for all), a custom `getKey` is sanitized and hashed, and `maxResolveTime` (30 s, then `TimeoutError`). `swr` and `varies` are **unverified** | `useAsyncData`/`useFetch` keys dedupe and share refs in one SSR pass (`dedupe: 'cancel' \| 'defer'`); `callOnce`; `sharedPrerenderData` | Nitro options (unverified) | Key-based | Stable (Nitro) |
 | SvelteKit | Remote `prerender` functions [exp]: build-time results served from CDN and the browser Cache API until the next deploy | Remote `query` [exp]: same args run once per request (devalue-serialized, order-insensitive key) | — | Arg-derived | Exp |
 | SolidStart | None | `query(fn, name)`: per request on the server, keyed by name + args | Fixed constants (5 s preload reuse, 180 s GC; not options) | Name + args | Stable |
 | Astro | None (content-layer build cache, image/font caches only) | — | — | — | — |
